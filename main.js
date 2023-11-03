@@ -1,11 +1,22 @@
 const { win, BrowserWindow, app, ipcMain, shell, Notification } = require('electron');
 const path = require('path');
 const sound = require('sound-play');
-require('dotenv').config();
 
 const OrderUtils = require('./orderUtils');
 
 const isPackaged = app.isPackaged;
+
+// https://stackoverflow.com/questions/54214340/electron-builder-how-to-set-node-environmental-variables
+require('dotenv').config({
+    path: isPackaged
+        ? path.join(process.resourcesPath, '.env')
+        : path.resolve(process.cwd(), '.env'),
+});
+
+const alertSoundPath = !isPackaged
+    ? (filePath = path.join(__dirname, 'assets', 'mario.mp3'))
+    : (filePath = path.join(process.resourcesPath, 'assets', 'mario.mp3'));
+
 const BINANCE_API_KEY = process.env.BINANCE_API_KEY;
 const BINANCE_API_SECRET = process.env.BINANCE_API_SECRET;
 
@@ -13,16 +24,9 @@ if (!BINANCE_API_KEY || !BINANCE_API_SECRET) {
     throw new Error('pls input BINANCE_API_KEY and BINANCE_API_SECRET in .env file');
 }
 
-// ipcMain.on('notify', (_, msg) => new Notification({ title: 'title123', body: msg }).show());
 ipcMain.on('notify', (_) => {
-    let filePath;
-
-    !isPackaged
-        ? (filePath = path.join(__dirname, 'assets', 'mario.mp3'))
-        : (filePath = path.join(process.resourcesPath, 'assets', 'mario.mp3'));
-
     let volume = 0.1;
-    sound.play(filePath, volume);
+    sound.play(alertSoundPath, volume);
 });
 
 ipcMain.on('order', (_, params) => {
@@ -43,10 +47,8 @@ function createWindow() {
     const win = new BrowserWindow({
         width: 1500,
         height: 800,
-        // backgroundColor: '#808080',
         webPreferences: {
             nodeIntegration: false,
-            // javascript: true,
             contextIsolation: true,
             preload: path.join(__dirname, 'src', 'js', 'preload.js'),
         },
