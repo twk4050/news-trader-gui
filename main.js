@@ -35,7 +35,7 @@ ipcMain.on('order', (_, params) => {
     // let notification123 = new Notification({ title: title, body: body });
     // notification123.show();
     if (isPackaged) {
-        OrderUtils.send_binance_limit_order(params, KEY, SECRET);
+        OrderUtils.send_binance_limit_order(params, BINANCE_API_KEY, BINANCE_API_SECRET);
     }
 });
 
