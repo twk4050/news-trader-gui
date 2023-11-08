@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState, useRef } from 'react';
 
 import { Container } from '@mui/material';
-import { createTheme, ThemeProvider } from '@mui/material';
+import { createTheme, ThemeProvider, Grid, Stack } from '@mui/material';
 import { Masonry } from '@mui/lab';
 
 import ChartContainer from './ChartContainer';
@@ -35,7 +35,7 @@ export default function App() {
     // setCurrentSymbol(newSymbol);
 
     // 4 chart, 1 btc, 1 eth, 1 hotcoin 1h, 1 hotcoin 15min
-    const hotCoins = ['SOLUSDT', 'BLZUSDT', 'GASUSDT'];
+    const hotCoins = ['TRBUSDT', 'GASUSDT'];
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
     useEffect(() => {
@@ -44,10 +44,21 @@ export default function App() {
         console.log('in app useeffect');
     }, []);
 
-    const sxPropsChart = {
-        minWidth: '440px',
-        minHeight: '370px',
-        maxHeight: '370px',
+    // width = 2 chart 536 x2 + news 320 ~ 1400px
+    const sxPropsChartContainer = {};
+
+    const sxPropsNewsContainer = {
+        minWidth: '320px',
+        maxWidth: '320px',
+        maxHeight: '550px',
+    };
+
+    const sxPropsOrderContainer = {
+        minWidth: '320px',
+        maxWidth: '320px',
+        minHeight: '150px',
+        maxHeight: '150px',
+        padding: '12px',
     };
 
     return (
@@ -60,46 +71,99 @@ export default function App() {
                     width: '100%',
                     height: '100vh',
                     padding: '8px 0px 0px 8px',
+                    display: 'flex',
                 }}
 
                 // sx={{ backgroundColor: 'black', width: '100%', height: '1000px' }} // 1500 x 700
             >
                 {symbolsFilterInfo ? (
-                    <Masonry columns={3} spacing={1}>
-                        <ChartContainer
-                            sxProps={sxPropsChart}
-                            symbolsFilterInfo={symbolsFilterInfo}
-                            setOrderSymbol={setOrderSymbol}
-                            // default btc interval 1h
-                        />
-                        <ChartContainer
-                            sxProps={sxPropsChart}
-                            symbolsFilterInfo={symbolsFilterInfo}
-                            setOrderSymbol={setOrderSymbol}
-                            symbol={hotCoins[0]}
-                            interval="1h"
-                        />
-                        <NewsContainer />
-                        {/* bottom Chart3 Chart4 and Order should have same symbol */}
-                        <ChartContainer
-                            sxProps={sxPropsChart}
-                            symbolsFilterInfo={symbolsFilterInfo}
-                            setOrderSymbol={setOrderSymbol}
-                            symbol={hotCoins[1]}
-                            interval="1h"
-                        />
-                        <ChartContainer
-                            sxProps={sxPropsChart}
-                            symbolsFilterInfo={symbolsFilterInfo}
-                            setOrderSymbol={setOrderSymbol}
-                            symbol={hotCoins[2]}
-                            interval="15m"
-                        />
-                        <OrderContainer
-                            symbol={orderSymbol}
-                            symbolsFilterInfo={symbolsFilterInfo}
-                        />
-                    </Masonry>
+                    // <Masonry columns={3} spacing={1}>
+                    //     <ChartContainer
+                    //         sxProps={sxPropsChart}
+                    //         symbolsFilterInfo={symbolsFilterInfo}
+                    //         setOrderSymbol={setOrderSymbol}
+                    //         // default btc interval 1h
+                    //     />
+                    //     <ChartContainer
+                    //         sxProps={sxPropsChart}
+                    //         symbolsFilterInfo={symbolsFilterInfo}
+                    //         setOrderSymbol={setOrderSymbol}
+                    //         symbol={hotCoins[0]}
+                    //         interval="1h"
+                    //     />
+                    //     <NewsContainer />
+                    //     {/* bottom Chart3 Chart4 and Order should have same symbol */}
+                    //     <ChartContainer
+                    //         sxProps={sxPropsChart}
+                    //         symbolsFilterInfo={symbolsFilterInfo}
+                    //         setOrderSymbol={setOrderSymbol}
+                    //         symbol={hotCoins[1]}
+                    //         interval="1h"
+                    //     />
+                    //     <ChartContainer
+                    //         sxProps={sxPropsChart}
+                    //         symbolsFilterInfo={symbolsFilterInfo}
+                    //         setOrderSymbol={setOrderSymbol}
+                    //         symbol={hotCoins[2]}
+                    //         interval="15m"
+                    //     />
+                    //     <OrderContainer
+                    //         symbol={orderSymbol}
+                    //         symbolsFilterInfo={symbolsFilterInfo}
+                    //     />
+                    // </Masonry>
+                    <>
+                        <Grid
+                            container
+                            spacing={0.8}
+                            sx={{ minWidth: '1100px', maxWidth: '1100px' }}
+                        >
+                            <Grid item md={6}>
+                                <ChartContainer
+                                    symbolsFilterInfo={symbolsFilterInfo}
+                                    setOrderSymbol={setOrderSymbol}
+                                    sxProps={sxPropsChartContainer}
+                                    symbol={'BTCUSDT'}
+                                    interval={'1d'}
+                                />
+                            </Grid>
+                            <Grid item md={6}>
+                                <ChartContainer
+                                    symbolsFilterInfo={symbolsFilterInfo}
+                                    setOrderSymbol={setOrderSymbol}
+                                    sxProps={sxPropsChartContainer}
+                                    symbol={'SOLUSDT'}
+                                    interval={'1h'}
+                                />
+                            </Grid>
+                            <Grid item md={6}>
+                                <ChartContainer
+                                    symbolsFilterInfo={symbolsFilterInfo}
+                                    setOrderSymbol={setOrderSymbol}
+                                    sxProps={sxPropsChartContainer}
+                                    symbol={hotCoins[0]}
+                                    interval={'1h'}
+                                />
+                            </Grid>
+                            <Grid item md={6}>
+                                <ChartContainer
+                                    symbolsFilterInfo={symbolsFilterInfo}
+                                    setOrderSymbol={setOrderSymbol}
+                                    sxProps={sxPropsChartContainer}
+                                    symbol={hotCoins[1]}
+                                    interval={'15m'}
+                                />
+                            </Grid>
+                        </Grid>
+                        <Stack spacing={1} direction={'column'} sx={{ padding: '4px 4px 4px 8px' }}>
+                            <NewsContainer sxProps={sxPropsNewsContainer} />
+                            <OrderContainer
+                                symbol={orderSymbol}
+                                symbolsFilterInfo={symbolsFilterInfo}
+                                sxProps={sxPropsOrderContainer}
+                            />
+                        </Stack>
+                    </>
                 ) : (
                     <div>hello world</div>
                 )}

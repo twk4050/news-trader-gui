@@ -112,7 +112,7 @@ function OrderComponent({ symbol, price, filterInfo }) {
     );
 }
 
-export default function OrderContainer({ symbol, symbolsFilterInfo }) {
+export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
     // const symbols = ['BTCUSDT', 'ETHUSDT', 'TRBUSDT', '1000FLOKIUSDT', 'TUSDT'];
     // const symbols = Object.keys(symbolsFilterInfo);
     // const [currentSymbol, setCurrentSymbol] = useState(symbols[0]);
@@ -142,13 +142,8 @@ export default function OrderContainer({ symbol, symbolsFilterInfo }) {
         <Stack
             spacing={0}
             sx={{
-                minWidth: '350px',
-                maxWidth: '350px',
-                minHeight: '150px',
-                maxHeight: '150px',
-                padding: '12px',
-
                 backgroundColor: '#132e3b',
+                ...sxProps,
             }}
         >
             {allCoinPrice[currentSymbol] ? (
