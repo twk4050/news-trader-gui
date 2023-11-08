@@ -58,9 +58,11 @@ function OrderComponent({ symbol, price, filterInfo }) {
     return (
         <Stack spacing={2}>
             <Stack direction={'row'} spacing={2}>
-                <Typography>
-                    {symbol} Price: {price.toFixed(precision)}
-                </Typography>
+                <Stack direction={'column'}>
+                    <Typography>{symbol}</Typography>
+                    <Typography>Price: {price.toFixed(precision)}</Typography>
+                </Stack>
+
                 <TextField
                     size="small"
                     variant="outlined"
@@ -73,15 +75,14 @@ function OrderComponent({ symbol, price, filterInfo }) {
                         },
                     }}
                     sx={{
-                        maxWidth: '90px',
-                        minWidth: '90px',
-
-                        height: '30px',
-                        minHeight: '30px',
-                        maxHeight: '30px',
+                        maxWidth: '120px',
+                        minWidth: '120px',
+                        height: '48px',
+                        minHeight: '48px',
+                        maxHeight: '48px',
                     }}
                     inputProps={{
-                        step: '.1',
+                        step: '.05',
                     }}
                     type="number"
                     value={spread}

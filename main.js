@@ -63,8 +63,8 @@ function createWindow() {
 
         autoHideMenuBar: true, // press alt to show
         title: 'electron title from main', // 2 way to set app, here and html.head.title
-        maximizable: false,
-        resizable: false,
+        maximizable: true,
+        // resizable: false,
     });
 
     win.loadFile('index.html');
