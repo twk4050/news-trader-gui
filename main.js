@@ -13,9 +13,14 @@ require('dotenv').config({
         : path.resolve(process.cwd(), '.env'),
 });
 
-const alertSoundPath = !isPackaged
+// TODO: convert to fn
+const marioAlertSoundPath = !isPackaged
     ? (filePath = path.join(__dirname, 'assets', 'mario.mp3'))
     : (filePath = path.join(process.resourcesPath, 'assets', 'mario.mp3'));
+
+const discordAlertSoundPath = !isPackaged
+    ? (filePath = path.join(__dirname, 'assets', 'discord.mp3'))
+    : (filePath = path.join(process.resourcesPath, 'assets', 'discord.mp3'));
 
 const BINANCE_API_KEY = process.env.BINANCE_API_KEY;
 const BINANCE_API_SECRET = process.env.BINANCE_API_SECRET;
@@ -26,7 +31,7 @@ if (!BINANCE_API_KEY || !BINANCE_API_SECRET) {
 
 ipcMain.on('notify', (_) => {
     let volume = 0.1;
-    sound.play(alertSoundPath, volume);
+    sound.play(marioAlertSoundPath, volume);
 });
 
 ipcMain.on('order', (_, params) => {
@@ -34,6 +39,9 @@ ipcMain.on('order', (_, params) => {
     // let body = `${params.side} ${params.quantity} ${params.symbol} @ ${params.price}`;
     // let notification123 = new Notification({ title: title, body: body });
     // notification123.show();
+
+    let volume = 0.5;
+    sound.play(discordAlertSoundPath, volume);
     if (isPackaged) {
         OrderUtils.send_binance_limit_order(params, BINANCE_API_KEY, BINANCE_API_SECRET);
     }
