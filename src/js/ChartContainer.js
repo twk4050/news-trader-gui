@@ -83,8 +83,8 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
                 mode: 0, // default value 0 for "Magnet"
             },
             grid: {
-                vertLines: { color: '#9E9E9E88' }, // hexa + opacity(00-ff)
-                horzLines: { color: '#9E9E9E88' },
+                vertLines: { color: '#9E9E9E33' }, // hexa + opacity(00-ff)
+                horzLines: { color: '#9E9E9E33' },
             },
             localization: {
                 timeFormatter: (time) => {
@@ -343,7 +343,7 @@ export default function ChartContainer({
 }) {
     // const symbols = ['BTCUSDT', 'ETHUSDT', 'LINKUSDT', 'TRBUSDT', 'SOLUSDT', '1000PEPEUSDT'];
     const symbols = Object.keys(symbolsFilterInfo); // return array of obj keys
-    const intervals = ['1m', '3m', '15m', '1h', '4h', '1d'];
+    const intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w'];
     const [currentSymbol, setCurrentSymbol] = useState(symbol);
     const chartContainerRef = useRef(null);
 
