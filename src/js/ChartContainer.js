@@ -41,7 +41,11 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             width: chartRef.current.clientWidth,
             height: 330,
 
-            layout: { textColor: 'white', background: { type: 'solid', color: '#141823' } },
+            layout: {
+                textColor: 'white',
+                background: { type: 'solid', color: '#141823' },
+                fontSize: 12,
+            },
             rightPriceScale: {
                 scaleMargins: {
                     top: 0.2,
@@ -156,15 +160,20 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
         // symbolName https://tradingview.github.io/lightweight-charts/tutorials/how_to/legends#:~:text=In%20order%20to%20add%20a,within%20our%20html%20legend%20element.
         const symbolName = `${symbol} - ${interval} - BINANCE-FUTURES`;
         const legend = document.createElement('div');
-        legend.style = `position: absolute; left: 12px; top: 12px; z-index: 1; font-size: 12px; font-family: Helvetica`;
+        legend.style = `position: absolute; left: 12px; top: 12px; z-index: 1; font-size: 12px; font-family: Helvetica; width: ${chartRef.current.clientWidth}px;`;
 
         const firstRow = document.createElement('div');
         firstRow.innerHTML = symbolName;
         firstRow.style = 'color: white;';
 
+        const timeRemainingElem = document.createElement('div');
+        timeRemainingElem.id = `candle-countdown-${symbol}-${interval}`; // id has to be unique else css affects the elem with same id
+        timeRemainingElem.style = 'position: absolute; top: 0;  right: 70px; color: yellow;';
+
         chartRef.current.style = `position: relative;`;
         chartRef.current.appendChild(legend);
         legend.appendChild(firstRow);
+        legend.appendChild(timeRemainingElem);
 
         function handleCrossHairMoveForLegend(param) {
             //https://tradingview.github.io/lightweight-charts/tutorials/how_to/tooltips#getting-the-mouse-cursors-position
@@ -301,9 +310,7 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             wsRef.current.onmessage = (event) => {
                 let data = JSON.parse(event.data);
 
-                let wsKlineData = data.k;
-
-                let parsedKlineData = chartUtils.mapWSKlineData(wsKlineData);
+                let parsedKlineData = chartUtils.mapWSKlineData(data);
 
                 setNewDataFromWS(parsedKlineData);
             };
@@ -318,6 +325,14 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
     useEffect(() => {
         if (newDataFromWS) {
             klineSeriesDrawer.update(newDataFromWS);
+
+            let elem = document.getElementById(`candle-countdown-${symbol}-${interval}`);
+            let kline_event_time = newDataFromWS['e'];
+            let remainingTime = getRemainingTime(kline_event_time, interval);
+
+            // console.log(kline_event_time);
+            // console.log(remainingTime);
+            elem.innerHTML = remainingTime;
 
             if (plotMA) {
                 const currentKlineData = klineSeriesDrawer.data();
@@ -464,6 +479,8 @@ export default function ChartContainer({
     );
 }
 
+// FIXME: hacks
+
 // calculate full all data
 function calculateSMAFromKline(data, count) {
     // from https://jsfiddle.net/TradingView/537kjtfg/
@@ -516,4 +533,35 @@ function calculateLatestSMA(data, count) {
     };
 
     return result;
+}
+
+// https://stackoverflow.com/questions/31337370/how-to-convert-seconds-to-hhmmss-in-moment-js
+function getRemainingTime(epoch_ms, interval) {
+    // interval = 1m 3m 15m 1h 4h 1d 1w
+
+    const interval_to_ms = {
+        '1m': 60 * 1000,
+        '3m': 3 * 60 * 1000,
+        '15m': 15 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '4h': 4 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000,
+        '1w': 7 * 24 * 60 * 60 * 1000,
+    };
+
+    const interval_ms = interval_to_ms[interval];
+
+    let format = 'mm:ss';
+    if (interval_ms > interval_to_ms['1h']) {
+        format = 'HH:mm:ss';
+    }
+
+    let ms_passed = epoch_ms % interval_ms;
+    let ms_remaining = interval_ms - ms_passed;
+
+    let remainingTime = moment
+        .utc(moment.duration(ms_remaining, 'milliseconds').asMilliseconds())
+        .format(format);
+
+    return remainingTime;
 }

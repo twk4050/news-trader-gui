@@ -225,13 +225,16 @@ function mapHTTPKlineData(kline) {
     };
 }
 
-function mapWSKlineData(kline) {
+function mapWSKlineData(data) {
+    let e = data.E; // event time.
+    let kline = data.k;
     return {
         time: kline.t / 1000,
         open: +kline.o,
         high: +kline.h,
         low: +kline.l,
         close: +kline.c,
+        e: e,
     };
 }
 
