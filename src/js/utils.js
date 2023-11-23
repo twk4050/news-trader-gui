@@ -222,6 +222,7 @@ function mapHTTPKlineData(kline) {
         high: +kline[2],
         low: +kline[3],
         close: +kline[4],
+        volume: +kline[7], // quote asset volume, eg BTCUSDT, quote asset = usdt, base asset= BTC
     };
 }
 
@@ -235,6 +236,16 @@ function mapWSKlineData(data) {
         low: +kline.l,
         close: +kline.c,
         e: e,
+        volume: +kline.q, // quote asset volume
+    };
+}
+
+// vol histogram
+function mapDataForVolumeHistogram(kline) {
+    // kline data should be processed alr, time in seconds number type ...
+    return {
+        time: kline.time,
+        value: kline.volume,
     };
 }
 
@@ -249,6 +260,7 @@ const chartUtils = {
     craft_binance_kline_end_point,
     mapHTTPKlineData,
     mapWSKlineData,
+    mapDataForVolumeHistogram,
 };
 
 const BinanceUtils = {

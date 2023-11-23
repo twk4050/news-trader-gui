@@ -12,6 +12,8 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
     // [{open, high, low, close, time}, {open, high ...}]
     const [newDataFromWS, setNewDataFromWS] = useState();
     const [klineSeriesDrawer, setKlineSeriesDrawer] = useState(null);
+    const [volSeriesDrawer, setVolSeriesDrawer] = useState(null);
+
     const [lineSeriesDrawerMA10, setLineSeriesDrawerMA10] = useState(null);
     const [lineSeriesDrawerMA20, setLineSeriesDrawerMA20] = useState(null);
 
@@ -123,6 +125,33 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
         klineSeries.setData(klineData);
         setKlineSeriesDrawer(klineSeries);
 
+        // FIXME: new!! vol histogram
+        const volumeSeries = chart.addHistogramSeries({
+            priceFormat: {
+                type: 'volume',
+            },
+            lastValueVisible: false,
+            priceLineVisible: false,
+
+            priceScaleId: '', // set as an overlay by setting a blank priceScaleId
+        });
+        volumeSeries.priceScale().applyOptions({
+            // set the positioning of the volume series
+            scaleMargins: {
+                top: 0.8, // highest point of the series will be 70% away from the top
+                bottom: 0,
+            },
+        });
+
+        let volData = klineData.map(chartUtils.mapDataForVolumeHistogram);
+        volumeSeries.setData(volData);
+        setVolSeriesDrawer(volumeSeries);
+
+        const volumeNumberFormatter = Intl.NumberFormat('en', {
+            notation: 'compact',
+            maximumFractionDigits: 2,
+        });
+
         // draw sma sma10 purple 20 orange
         if (plotMA) {
             // interface SeriesOptionCommon n LineStyleOptions
@@ -166,6 +195,10 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
         firstRow.innerHTML = symbolName;
         firstRow.style = 'color: white;';
 
+        const secondRow = document.createElement('div');
+        secondRow.innerHTML = 'vol: ';
+        secondRow.style = 'padding: 4px 0px 0px 0px; color: white;';
+
         const timeRemainingElem = document.createElement('div');
         timeRemainingElem.id = `candle-countdown-${symbol}-${interval}`; // id has to be unique else css affects the elem with same id
         timeRemainingElem.style = 'position: absolute; top: 0;  right: 70px; color: yellow;';
@@ -173,6 +206,7 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
         chartRef.current.style = `position: relative;`;
         chartRef.current.appendChild(legend);
         legend.appendChild(firstRow);
+        legend.appendChild(secondRow);
         legend.appendChild(timeRemainingElem);
 
         function handleCrossHairMoveForLegend(param) {
@@ -192,6 +226,10 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
                 let amplitude = Math.abs(((last.high - last.low) / last.low) * 100).toFixed(2);
 
                 firstRow.innerHTML = ` O: ${last.open} H: ${last.high} L: ${last.low} C: ${last.close} A: ${amplitude}%`;
+
+                // vol
+                const lastVolData = volumeSeries.dataByIndex(volumeSeries.data().length - 1);
+                secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(lastVolData.value)}`;
                 return;
             }
 
@@ -205,6 +243,11 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             let amplitude = Math.abs(((h - l) / l) * 100).toFixed(2);
 
             firstRow.innerHTML = `O: ${o} H: ${h} L: ${l} C: ${c} A: ${amplitude}%`;
+
+            // vol
+            const volData = param.seriesData.get(volumeSeries);
+
+            secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(volData.value)}`;
         }
 
         // from Tv React tutorial FIXME: not so useful as desktop app should be fixed size
@@ -325,6 +368,9 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
     useEffect(() => {
         if (newDataFromWS) {
             klineSeriesDrawer.update(newDataFromWS);
+
+            let newVolumeData = chartUtils.mapDataForVolumeHistogram(newDataFromWS);
+            volSeriesDrawer.update(newVolumeData);
 
             let elem = document.getElementById(`candle-countdown-${symbol}-${interval}`);
             let kline_event_time = newDataFromWS['e'];
@@ -564,4 +610,17 @@ function getRemainingTime(epoch_ms, interval) {
         .format(format);
 
     return remainingTime;
+}
+
+function moolah_round(num, locale = 'en') {
+    // Nine Zeroes for Billions
+    return Math.abs(Number(num)) >= 1.0e9
+        ? Math.round(Math.abs(Number(num)) / 1.0e9) + ' B'
+        : // Six Zeroes for Millions
+        Math.abs(Number(num)) >= 1.0e6
+        ? Math.round(Math.abs(Number(num)) / 1.0e6) + ' M'
+        : // Three Zeroes for Thousands
+        Math.abs(Number(num)) >= 1.0e3
+        ? Math.round(Math.abs(Number(num)) / 1.0e3) + ' K'
+        : Math.abs(Number(num));
 }

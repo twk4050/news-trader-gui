@@ -35,7 +35,7 @@ export default function App() {
     // setCurrentSymbol(newSymbol);
 
     // 4 chart, 1 btc, 1 eth, 1 hotcoin 1h, 1 hotcoin 15min
-    const hotCoins = ['TRBUSDT', 'GASUSDT'];
+    const hotCoins = ['SOLUSDT', 'SOLUSDT'];
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
     useEffect(() => {
@@ -132,7 +132,7 @@ export default function App() {
                                     symbolsFilterInfo={symbolsFilterInfo}
                                     setOrderSymbol={setOrderSymbol}
                                     sxProps={sxPropsChartContainer}
-                                    symbol={'SOLUSDT'}
+                                    symbol={'ETHUSDT'}
                                     interval={'1h'}
                                 />
                             </Grid>
