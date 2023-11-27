@@ -228,8 +228,13 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
                 firstRow.innerHTML = ` O: ${last.open} H: ${last.high} L: ${last.low} C: ${last.close} A: ${amplitude}%`;
 
                 // vol
-                const lastVolData = volumeSeries.dataByIndex(volumeSeries.data().length - 1);
-                secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(lastVolData.value)}`;
+                try {
+                    const lastVolData = volumeSeries.dataByIndex(volumeSeries.data().length - 1);
+                    secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(lastVolData.value)}`;
+                } catch (err) {
+                    console.log(err);
+                }
+
                 return;
             }
 
@@ -245,9 +250,12 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             firstRow.innerHTML = `O: ${o} H: ${h} L: ${l} C: ${c} A: ${amplitude}%`;
 
             // vol
-            const volData = param.seriesData.get(volumeSeries);
-
-            secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(volData.value)}`;
+            try {
+                const volData = param.seriesData.get(volumeSeries);
+                secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(volData.value)}`;
+            } catch (err) {
+                console.log(err);
+            }
         }
 
         // from Tv React tutorial FIXME: not so useful as desktop app should be fixed size
