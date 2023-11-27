@@ -184,13 +184,6 @@ const news2 = {
     time: get_formatted_date(1699003204030),
     source: 'Binance EN',
 };
-const news3 = {
-    title: 'AirDAO (@airdao_io)',
-    body: "Strategic partnerships have consistently driven #AirDAO's growth and innovation.\n\nLearn more about AirDAO & INC4 collaboration in our blog https://t.co/3Td0fzjbl7",
-    link: 'https://twitter.com/airdao_io/status/1714596164274892897',
-    coins: ['1000PEPEUSDT'],
-    time: get_formatted_date(1697702518849),
-};
 
 const news4 = {
     title: 'This is a title!!',
@@ -199,7 +192,15 @@ const news4 = {
     coins: [],
     time: get_formatted_date(1697702518849),
 };
-const generateMockNewsFeed = () => [news2, news3, news4, news3];
+
+const capoNews = {
+    title: "CryptoCapo's TA (t.me/CryptoCapoTG)",
+    body: "BTC \n\nCurrent situation:\n\nDeviation above the previous highs. Most people expecting $40k+. It would be perfect if that level gets front run.\n\nThe level of greed, arrogance and cockiness is reaching extreme levels. It reminds me of when price was at $45k-48k back in March-April 2022. I was calling for $21k-23k back then and  the hate level was very similar in percentage. But there's a big difference now; price is much lower and fundings are much higher (reaching ATH levels)\n\nThe market will tell if the bear market rally / manipulation thesis was right or not. In my opinion it's very clear, and if that's the case... it could be fully retraced within a few days/weeks. That's why I prefer to be stay out of the market still.\n\nThe $30k-31k level should show some support since it was the main level for a long time and there will be a \"S/R flip narrative\". Probably a short-term bounce from there if reached. Actually, if it breaks below $35k, it would confirm all the bearish divergences and they are strong enough to take the price below $30k eventually. Below there, the only support would be $25k but it has been tested several times and with that trend break it shouldn't hold. That would take us to the main target of $12k.\n\nNot opening any new positions yet until more confirmations are given.",
+    link: 'https://t.me/CryptoCapoTG/234',
+    coins: [],
+    time: get_formatted_date(1700838613719),
+};
+const generateMockNewsFeed = () => [capoNews, news2, news4];
 
 // for Charting
 function craft_binance_kline_end_point(symbol, interval) {
