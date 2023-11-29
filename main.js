@@ -42,6 +42,7 @@ ipcMain.on('order', (_, params) => {
 
     let volume = 0.5;
     sound.play(discordAlertSoundPath, volume);
+
     if (isPackaged) {
         OrderUtils.send_binance_limit_order(params, BINANCE_API_KEY, BINANCE_API_SECRET);
     }
