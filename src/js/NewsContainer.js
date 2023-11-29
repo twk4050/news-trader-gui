@@ -122,6 +122,7 @@ export default function NewsContainer({ sxProps }) {
     }
 
     function handleIncomingNews(incomingNews) {
+        console.log('raw', incomingNews);
         setNewsFeed((prevNews) => {
             // if new news, play sound from nodejs
             return [incomingNews, ...prevNews];
@@ -147,7 +148,7 @@ export default function NewsContainer({ sxProps }) {
 
                 <FormControlLabel
                     control={<Checkbox onChange={(e) => setDisableSound(!disableSound)} />}
-                    label="disable sound?"
+                    label="disable sound? v1"
                     sx={{ maxWidth: '200px', maxHeight: '20px' }}
                 />
             </Stack>

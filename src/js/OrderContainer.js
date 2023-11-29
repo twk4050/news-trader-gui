@@ -48,7 +48,13 @@ function OrderComponent({ symbol, price, filterInfo }) {
                 price: order_price,
             };
 
-            console.log(side, symbol, nv, `quantity: ${order_quantity} @ ${order_price}`);
+            console.log(
+                'Browser: from OrderContainer.js ',
+                side,
+                symbol,
+                nv,
+                `quantity: ${order_quantity} @ ${order_price}`
+            );
             GLOBAL_API.binance.sendOrder(params);
         }
 
