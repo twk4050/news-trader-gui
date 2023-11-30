@@ -14,4 +14,7 @@ contextBridge.exposeInMainWorld('API123', {
             ipcRenderer.send('order', params);
         },
     },
+    appData: {
+        version: 'v2.0',
+    },
 });

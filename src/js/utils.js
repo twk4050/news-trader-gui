@@ -123,6 +123,10 @@ function parse_news(news) {
     if ('source' in news) {
         // .source == 'Blogs' / 'Terminal' / 'Binance', for blogs, get body with .en?
         source = news.source;
+        if (source === 'Upbit') {
+            title = news.en;
+        }
+
         body = ''; // body = news.en
         link = news.url; // for blogs
     } else {
@@ -169,10 +173,12 @@ function initTreeWS(cb) {
 
         if (event.data !== 'pong') {
             let raw_news = JSON.parse(event.data);
-
             let parsed_news = parse_news(raw_news);
-            console.log(parsed_news);
+
             cb(parsed_news);
+
+            console.log('raw', raw_news);
+            console.log('parsed', parsed_news);
         }
     };
 }
