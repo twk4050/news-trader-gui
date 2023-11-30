@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('API123', {
         },
     },
     appData: {
-        version: 'v2.0',
+        // v3 added MA50 blue line
+        version: 'v3.0',
     },
 });

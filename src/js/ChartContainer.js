@@ -16,9 +16,11 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
 
     const [lineSeriesDrawerMA10, setLineSeriesDrawerMA10] = useState(null);
     const [lineSeriesDrawerMA20, setLineSeriesDrawerMA20] = useState(null);
+    const [lineSeriesDrawerMA50, setLineSeriesDrawerMA50] = useState(null);
 
     const MA10_LOOKBACK = 10;
     const MA20_LOOKBACK = 20;
+    const MA50_LOOKBACK = 50;
 
     const wsRef = useRef(null);
     const chartRef = useRef();
@@ -182,6 +184,16 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             const ma20Data = calculateSMAFromKline(klineData, MA20_LOOKBACK);
             ma20Series.setData(ma20Data);
             setLineSeriesDrawerMA20(ma20Series);
+
+            // FIXME: new
+            const ma50_Options = {
+                ...ma10Options,
+                color: '#2860f8',
+            };
+            const ma50Series = chart.addLineSeries(ma50_Options);
+            const ma50Data = calculateSMAFromKline(klineData, MA50_LOOKBACK);
+            ma50Series.setData(ma50Data);
+            setLineSeriesDrawerMA50(ma50Series);
         }
 
         // chart.timeScale().fitContent();
@@ -393,9 +405,11 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
 
                 let latestMA10 = calculateLatestSMA(currentKlineData, MA10_LOOKBACK);
                 let latestMA20 = calculateLatestSMA(currentKlineData, MA20_LOOKBACK);
+                let latestMA50 = calculateLatestSMA(currentKlineData, MA50_LOOKBACK);
 
                 lineSeriesDrawerMA10.update(latestMA10);
                 lineSeriesDrawerMA20.update(latestMA20);
+                lineSeriesDrawerMA50.update(latestMA50);
             }
         }
     }, [newDataFromWS]);
