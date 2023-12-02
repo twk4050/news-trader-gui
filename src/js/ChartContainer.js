@@ -7,6 +7,43 @@ import moment from 'moment';
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
 import { chartUtils, BinanceUtils } from './utils';
 
+/* 
+ChartContainer
+- from symbol and interval, getKlineData
+- if klineData, render Chart
+
+Chart props (symbol?, interval?, klineData, symbolsFilterInfo, plotMA? )
+- tickSize = symbolsFilterInfo[symbol]['tickSize'] # can remove prop drilling 'symbolsFilterInfo' and pass tickSize
+- 
+
+*/
+
+const MA10_Options = {
+    lookback: 10,
+    color: '#e040fb',
+    lineWidth: 2,
+    lineVisible: true,
+    lastValueVisible: false, // disable value on price Axis
+    priceLineVisible: false, // hide horizontal line
+
+    // crosshairmarker is the circle on lineSeries
+    crosshairMarkerVisible: false,
+};
+
+const MA20_Options = {
+    ...MA10_Options,
+    lookback: 20,
+
+    color: '#f89401',
+};
+const MA50_Options = {
+    ...MA10_Options,
+    lookback: 50,
+    color: '#2860f8',
+};
+
+const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
+
 // FIXME: junk code
 function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }) {
     // [{open, high, low, close, time}, {open, high ...}]
@@ -28,12 +65,6 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
     // plot chart with new data
     useEffect(() => {
         console.log('plotting chart ', symbol, interval, 'test123');
-
-        // FIXME:
-        // "1000FLOKIUSDT": {
-        //     "pricePrecision": 7,
-        //     "tickSize": "0.0000100",
-        // },
 
         const tickSize = symbolsFilterInfo[symbol]['tickSize'];
 
@@ -160,40 +191,23 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/SeriesOptionsCommon
             // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/LineStyleOptions
             // setData( [ {value: 0, time: epoch }, {...} ])
-            const ma10Options = {
-                color: '#e040fb',
-                lineWidth: 2,
-                lastValueVisible: false, // disable value on price Axis
-                priceLineVisible: false, // hide horizontal line
 
-                // crosshairmarker is the circle on lineSeries
-                crosshairMarkerVisible: false,
-            };
+            MA_Options.forEach((ma_option) => {
+                const lookback = ma_option.lookback;
 
-            const ma10Series = chart.addLineSeries(ma10Options);
-            const ma10Data = calculateSMAFromKline(klineData, MA10_LOOKBACK);
+                const maSeries = chart.addLineSeries(ma_option);
+                const maData = calculateSMAFromKline(klineData, lookback);
 
-            ma10Series.setData(ma10Data);
-            setLineSeriesDrawerMA10(ma10Series);
+                maSeries.setData(maData);
 
-            const ma2Options = {
-                ...ma10Options,
-                color: '#f89401',
-            };
-            const ma20Series = chart.addLineSeries(ma2Options);
-            const ma20Data = calculateSMAFromKline(klineData, MA20_LOOKBACK);
-            ma20Series.setData(ma20Data);
-            setLineSeriesDrawerMA20(ma20Series);
-
-            // FIXME: new
-            const ma50_Options = {
-                ...ma10Options,
-                color: '#2860f8',
-            };
-            const ma50Series = chart.addLineSeries(ma50_Options);
-            const ma50Data = calculateSMAFromKline(klineData, MA50_LOOKBACK);
-            ma50Series.setData(ma50Data);
-            setLineSeriesDrawerMA50(ma50Series);
+                if (lookback == 10) {
+                    setLineSeriesDrawerMA10(maSeries);
+                } else if (lookback == 20) {
+                    setLineSeriesDrawerMA20(maSeries);
+                } else if (lookback == 50) {
+                    setLineSeriesDrawerMA50(maSeries);
+                }
+            });
         }
 
         // chart.timeScale().fitContent();
