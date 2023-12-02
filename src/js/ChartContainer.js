@@ -53,7 +53,7 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             rightPriceScale: {
                 scaleMargins: {
                     top: 0.2,
-                    bottom: 0.2,
+                    bottom: 0.25,
                 },
                 borderVisible: false,
             },
