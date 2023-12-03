@@ -28,14 +28,9 @@ const theme = createTheme({
 
 export default function App() {
     const [symbolsFilterInfo, setSymbolsFilterInfo] = useState(null);
-    // const hotCoins = ['UNFIUSDT', 'TRBUSDT'];
-
     // const symbols = Object.keys(symbolsFilterInfo); // return array of obj keys
-    // const [currentSymbol, setCurrentSymbol] = useState(symbol);
-    // setCurrentSymbol(newSymbol);
 
-    // 4 chart, 1 btc, 1 eth, 1 hotcoin 1h, 1 hotcoin 15min
-    const hotCoins = ['SOLUSDT', 'SOLUSDT'];
+    const hotCoins = ['ORDIUSDT', 'IOTAUSDT'];
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
     useEffect(() => {
@@ -77,41 +72,6 @@ export default function App() {
                 // sx={{ backgroundColor: 'black', width: '100%', height: '1000px' }} // 1500 x 700
             >
                 {symbolsFilterInfo ? (
-                    // <Masonry columns={3} spacing={1}>
-                    //     <ChartContainer
-                    //         sxProps={sxPropsChart}
-                    //         symbolsFilterInfo={symbolsFilterInfo}
-                    //         setOrderSymbol={setOrderSymbol}
-                    //         // default btc interval 1h
-                    //     />
-                    //     <ChartContainer
-                    //         sxProps={sxPropsChart}
-                    //         symbolsFilterInfo={symbolsFilterInfo}
-                    //         setOrderSymbol={setOrderSymbol}
-                    //         symbol={hotCoins[0]}
-                    //         interval="1h"
-                    //     />
-                    //     <NewsContainer />
-                    //     {/* bottom Chart3 Chart4 and Order should have same symbol */}
-                    //     <ChartContainer
-                    //         sxProps={sxPropsChart}
-                    //         symbolsFilterInfo={symbolsFilterInfo}
-                    //         setOrderSymbol={setOrderSymbol}
-                    //         symbol={hotCoins[1]}
-                    //         interval="1h"
-                    //     />
-                    //     <ChartContainer
-                    //         sxProps={sxPropsChart}
-                    //         symbolsFilterInfo={symbolsFilterInfo}
-                    //         setOrderSymbol={setOrderSymbol}
-                    //         symbol={hotCoins[2]}
-                    //         interval="15m"
-                    //     />
-                    //     <OrderContainer
-                    //         symbol={orderSymbol}
-                    //         symbolsFilterInfo={symbolsFilterInfo}
-                    //     />
-                    // </Masonry>
                     <>
                         <Grid
                             container
@@ -151,7 +111,7 @@ export default function App() {
                                     setOrderSymbol={setOrderSymbol}
                                     sxProps={sxPropsChartContainer}
                                     symbol={hotCoins[1]}
-                                    interval={'15m'}
+                                    interval={'1h'}
                                 />
                             </Grid>
                         </Grid>
