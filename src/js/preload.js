@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('API123', {
     appData: {
         // v3 added MA50 blue line
         // v4 auto updates ohlc vol legend without hovering over to chart
-        version: 'v4.0',
+        // v4.1 try catch for formatVolLegend, volbar no value ?
+        version: 'v4.1',
     },
 });

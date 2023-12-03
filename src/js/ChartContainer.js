@@ -544,9 +544,14 @@ function formatVolLegend(volBar) {
         maximumFractionDigits: 2,
     });
 
-    let legend = `vol: ${volumeNumberFormatter.format(volBar.value)}`;
-
-    return legend;
+    let legend;
+    try {
+        legend = `vol: ${volumeNumberFormatter.format(volBar.value)}`;
+        return legend;
+    } catch (err) {
+        console.log('error', err);
+        return '';
+    }
 }
 
 // calculate full all data
