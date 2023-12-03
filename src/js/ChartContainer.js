@@ -47,12 +47,26 @@ const MA50_Options = {
 
 const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
 
+const mock_oi_data = [
+    { time: 1701586800.0, value: 1990444 },
+    { time: 1701590400.0, value: 2027274 },
+    { time: 1701594000.0, value: 2070516 },
+    { time: 1701597600.0, value: 2106620 },
+    { time: 1701601200.0, value: 2054970 },
+    { time: 1701604800.0, value: 2018190 },
+    { time: 1701608400.0, value: 2022518 },
+    { time: 1701612000.0, value: 1995017 },
+    { time: 1701615600.0, value: 1986856 },
+    { time: 1701619200.0, value: 2024984 },
+];
+
 // FIXME: junk code
 function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
     // [{open, high, low, close, time}, {open, high ...}]
     const [newDataFromWS, setNewDataFromWS] = useState();
     const [klineSeriesDrawer, setKlineSeriesDrawer] = useState(null);
     const [volSeriesDrawer, setVolSeriesDrawer] = useState(null);
+    const [oiSeriesDrawer, setOISeriesDrawer] = useState(null);
 
     const [lineSeriesDrawerMA10, setLineSeriesDrawerMA10] = useState(null); // FIXME: lineSeriesDrawer why use useState
     const [lineSeriesDrawerMA20, setLineSeriesDrawerMA20] = useState(null);
@@ -165,18 +179,41 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
             lastValueVisible: false,
             priceLineVisible: false,
 
-            priceScaleId: '', // set as an overlay by setting a blank priceScaleId
+            priceScaleId: 'volId123', // set as an overlay by setting a blank priceScaleId
+        };
+
+        const oiOptions = {
+            color: '#e040fb',
+
+            priceFormat: {
+                type: 'volume',
+            },
+            lastValueVisible: false, // disable value on price Axis
+            priceLineVisible: false, // hide horizontal line
+            priceScaleId: 'oiid123', // set something different than volume pricescaleid
+            // crosshairmarker is the circle on lineSeries
+            crosshairMarkerVisible: false,
         };
 
         // init klineSeries n volume Histogram series
         const chart = createChart(chartRef.current, chartOptions);
         const klineSeries = chart.addCandlestickSeries(klineOptions);
         const volumeSeries = chart.addHistogramSeries(volumeOptions);
+        const oiSeries = chart.addHistogramSeries(oiOptions);
+
+        oiSeries.priceScale().applyOptions({
+            // set the positioning of the volume series
+            scaleMargins: {
+                top: 0.8, // highest point of the series will be 70% away from the top
+                bottom: 0.1,
+            },
+        });
+        oiSeries.setData(mock_oi_data);
 
         volumeSeries.priceScale().applyOptions({
             // set the positioning of the volume series
             scaleMargins: {
-                top: 0.8, // highest point of the series will be 70% away from the top
+                top: 0.9, // highest point of the series will be 70% away from the top
                 bottom: 0,
             },
         });
@@ -244,21 +281,15 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
                 param.point.y < 0 ||
                 param.point.y > chartRef.current.clientHeight
             ) {
-                // TODO: not needed anymore, websocket data will update html elem even if mouse not in chart
-
-                // if cursor moved away from chart, legend = take last candle ohlc
-                // let lastKlineDataIndex = klineSeries.data().length - 1;
-                // let lastKline = klineSeries.dataByIndex(lastKlineDataIndex);
-                // let lastVolBarIndex = volumeSeries.data().length - 1;
-                // let lastVolBar = volumeSeries.dataByIndex(lastVolBarIndex);
-                // ohlcLegend.innerHTML = formatOHLCLegend(lastKline);
-                // volLegend.innerHTML = formatVolLegend(lastVolBar);
-
                 return;
             }
 
             let kline = param.seriesData.get(klineSeries);
             let volBar = param.seriesData.get(volumeSeries);
+
+            if (!kline) {
+                return;
+            }
 
             ohlcLegend.innerHTML = formatOHLCLegend(kline);
             volLegend.innerHTML = formatVolLegend(volBar);
@@ -544,14 +575,8 @@ function formatVolLegend(volBar) {
         maximumFractionDigits: 2,
     });
 
-    let legend;
-    try {
-        legend = `vol: ${volumeNumberFormatter.format(volBar.value)}`;
-        return legend;
-    } catch (err) {
-        console.log('error', err);
-        return '';
-    }
+    let legend = `vol: ${volumeNumberFormatter.format(volBar.value)}`;
+    return legend;
 }
 
 // calculate full all data
