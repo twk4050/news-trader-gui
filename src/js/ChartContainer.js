@@ -12,11 +12,14 @@ ChartContainer
 - from symbol and interval, getKlineData
 - if klineData, render Chart
 
-Chart props (symbol?, interval?, klineData, symbolsFilterInfo, plotMA? )
+Chart props (symbol?, interval?, klineData, symbolsFilterInfo)
 - tickSize = symbolsFilterInfo[symbol]['tickSize'] # can remove prop drilling 'symbolsFilterInfo' and pass tickSize
-- 
-
 */
+
+// interface SeriesOptionCommon n LineStyleOptions
+// https://tradingview.github.io/lightweight-charts/docs/api/interfaces/SeriesOptionsCommon
+// https://tradingview.github.io/lightweight-charts/docs/api/interfaces/LineStyleOptions
+// draw sma sma10 purple 20 orange 50 blue
 
 const MA10_Options = {
     lookback: 10,
@@ -45,13 +48,13 @@ const MA50_Options = {
 const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
 
 // FIXME: junk code
-function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }) {
+function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
     // [{open, high, low, close, time}, {open, high ...}]
     const [newDataFromWS, setNewDataFromWS] = useState();
     const [klineSeriesDrawer, setKlineSeriesDrawer] = useState(null);
     const [volSeriesDrawer, setVolSeriesDrawer] = useState(null);
 
-    const [lineSeriesDrawerMA10, setLineSeriesDrawerMA10] = useState(null);
+    const [lineSeriesDrawerMA10, setLineSeriesDrawerMA10] = useState(null); // FIXME: lineSeriesDrawer why use useState
     const [lineSeriesDrawerMA20, setLineSeriesDrawerMA20] = useState(null);
     const [lineSeriesDrawerMA50, setLineSeriesDrawerMA50] = useState(null);
 
@@ -61,8 +64,11 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
 
     const wsRef = useRef(null);
     const chartRef = useRef();
+    const ohlcLegendRef = useRef();
+    const volLegendRef = useRef();
+    const timeRemainingLegendRef = useRef();
 
-    // plot chart with new data
+    // plot chart with kline data from binance kline api
     useEffect(() => {
         console.log('plotting chart ', symbol, interval, 'test123');
 
@@ -152,14 +158,7 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
                 minMove: minMove,
             },
         };
-
-        const chart = createChart(chartRef.current, chartOptions);
-        const klineSeries = chart.addCandlestickSeries(klineOptions);
-        klineSeries.setData(klineData);
-        setKlineSeriesDrawer(klineSeries);
-
-        // FIXME: new!! vol histogram
-        const volumeSeries = chart.addHistogramSeries({
+        const volumeOptions = {
             priceFormat: {
                 type: 'volume',
             },
@@ -167,7 +166,13 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
             priceLineVisible: false,
 
             priceScaleId: '', // set as an overlay by setting a blank priceScaleId
-        });
+        };
+
+        // init klineSeries n volume Histogram series
+        const chart = createChart(chartRef.current, chartOptions);
+        const klineSeries = chart.addCandlestickSeries(klineOptions);
+        const volumeSeries = chart.addHistogramSeries(volumeOptions);
+
         volumeSeries.priceScale().applyOptions({
             // set the positioning of the volume series
             scaleMargins: {
@@ -177,118 +182,87 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
         });
 
         let volData = klineData.map(chartUtils.mapDataForVolumeHistogram);
+
+        klineSeries.setData(klineData);
         volumeSeries.setData(volData);
+
+        setKlineSeriesDrawer(klineSeries);
         setVolSeriesDrawer(volumeSeries);
 
-        const volumeNumberFormatter = Intl.NumberFormat('en', {
-            notation: 'compact',
-            maximumFractionDigits: 2,
+        // moving average lineSeries
+        MA_Options.forEach((ma_option) => {
+            const lookback = ma_option.lookback;
+
+            const maSeries = chart.addLineSeries(ma_option);
+            const maData = calculateSMAFromKline(klineData, lookback);
+
+            maSeries.setData(maData); // setData( [ {value: 0, time: epoch }, {...} ])
+
+            if (lookback == 10) {
+                setLineSeriesDrawerMA10(maSeries);
+            } else if (lookback == 20) {
+                setLineSeriesDrawerMA20(maSeries);
+            } else if (lookback == 50) {
+                setLineSeriesDrawerMA50(maSeries);
+            }
         });
 
-        // draw sma sma10 purple 20 orange
-        if (plotMA) {
-            // interface SeriesOptionCommon n LineStyleOptions
-            // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/SeriesOptionsCommon
-            // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/LineStyleOptions
-            // setData( [ {value: 0, time: epoch }, {...} ])
-
-            MA_Options.forEach((ma_option) => {
-                const lookback = ma_option.lookback;
-
-                const maSeries = chart.addLineSeries(ma_option);
-                const maData = calculateSMAFromKline(klineData, lookback);
-
-                maSeries.setData(maData);
-
-                if (lookback == 10) {
-                    setLineSeriesDrawerMA10(maSeries);
-                } else if (lookback == 20) {
-                    setLineSeriesDrawerMA20(maSeries);
-                } else if (lookback == 50) {
-                    setLineSeriesDrawerMA50(maSeries);
-                }
-            });
-        }
-
-        // chart.timeScale().fitContent();
-
         // symbolName https://tradingview.github.io/lightweight-charts/tutorials/how_to/legends#:~:text=In%20order%20to%20add%20a,within%20our%20html%20legend%20element.
-        const symbolName = `${symbol} - ${interval} - BINANCE-FUTURES`;
         const legend = document.createElement('div');
         legend.style = `position: absolute; left: 12px; top: 12px; z-index: 1; font-size: 12px; font-family: Helvetica; width: ${chartRef.current.clientWidth}px;`;
 
-        const firstRow = document.createElement('div');
-        firstRow.innerHTML = symbolName;
-        firstRow.style = 'color: white;';
+        const ohlcLegend = document.createElement('div');
+        ohlcLegend.style = 'color: white;';
 
-        const secondRow = document.createElement('div');
-        secondRow.innerHTML = 'vol: ';
-        secondRow.style = 'padding: 4px 0px 0px 0px; color: white;';
+        const volLegend = document.createElement('div');
+        volLegend.style = 'padding: 4px 0px 0px 0px; color: white;';
 
-        const timeRemainingElem = document.createElement('div');
-        timeRemainingElem.id = `candle-countdown-${symbol}-${interval}`; // id has to be unique else css affects the elem with same id
-        timeRemainingElem.style = 'position: absolute; top: 0;  right: 70px; color: yellow;';
+        const timeRemainingLegend = document.createElement('div');
+        timeRemainingLegend.style = 'position: absolute; top: 0;  right: 70px; color: yellow;';
 
         chartRef.current.style = `position: relative;`;
         chartRef.current.appendChild(legend);
-        legend.appendChild(firstRow);
-        legend.appendChild(secondRow);
-        legend.appendChild(timeRemainingElem);
+        legend.appendChild(ohlcLegend);
+        legend.appendChild(volLegend);
+        legend.appendChild(timeRemainingLegend);
+
+        ohlcLegendRef.current = ohlcLegend;
+        volLegendRef.current = volLegend;
+        timeRemainingLegendRef.current = timeRemainingLegend;
 
         function handleCrossHairMoveForLegend(param) {
+            // console.log(param);
+            // param.time == undefined if mouse away from given candlesticks
+            // param.point.x .y if inside chart, if mouse went over to axis == undefined
+
             //https://tradingview.github.io/lightweight-charts/tutorials/how_to/tooltips#getting-the-mouse-cursors-position
             if (
-                param.point === undefined ||
                 !param.time ||
+                param.point === undefined ||
                 param.point.x < 0 ||
                 param.point.x > chartRef.current.clientWidth ||
                 param.point.y < 0 ||
                 param.point.y > chartRef.current.clientHeight
             ) {
+                // TODO: not needed anymore, websocket data will update html elem even if mouse not in chart
+
                 // if cursor moved away from chart, legend = take last candle ohlc
-                let length123 = klineSeries.data().length;
-                let last = klineSeries.dataByIndex(length123 - 1);
-
-                let amplitude = Math.abs(((last.high - last.low) / last.low) * 100).toFixed(2);
-
-                firstRow.innerHTML = ` O: ${last.open} H: ${last.high} L: ${last.low} C: ${last.close} A: ${amplitude}%`;
-
-                // vol
-                try {
-                    const lastVolData = volumeSeries.dataByIndex(volumeSeries.data().length - 1);
-                    secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(lastVolData.value)}`;
-                } catch (err) {
-                    console.log(err);
-                }
+                // let lastKlineDataIndex = klineSeries.data().length - 1;
+                // let lastKline = klineSeries.dataByIndex(lastKlineDataIndex);
+                // let lastVolBarIndex = volumeSeries.data().length - 1;
+                // let lastVolBar = volumeSeries.dataByIndex(lastVolBarIndex);
+                // ohlcLegend.innerHTML = formatOHLCLegend(lastKline);
+                // volLegend.innerHTML = formatVolLegend(lastVolBar);
 
                 return;
             }
 
-            const data = param.seriesData.get(klineSeries);
-            // const price = data.value !== undefined ? data.value : data.close;
-            const o = data.open;
-            const h = data.high;
-            const l = data.low;
-            const c = data.close;
+            let kline = param.seriesData.get(klineSeries);
+            let volBar = param.seriesData.get(volumeSeries);
 
-            let amplitude = Math.abs(((h - l) / l) * 100).toFixed(2);
-
-            firstRow.innerHTML = `O: ${o} H: ${h} L: ${l} C: ${c} A: ${amplitude}%`;
-
-            // vol
-            try {
-                const volData = param.seriesData.get(volumeSeries);
-                secondRow.innerHTML = `vol: ${volumeNumberFormatter.format(volData.value)}`;
-            } catch (err) {
-                console.log(err);
-            }
+            ohlcLegend.innerHTML = formatOHLCLegend(kline);
+            volLegend.innerHTML = formatVolLegend(volBar);
         }
-
-        // from Tv React tutorial FIXME: not so useful as desktop app should be fixed size
-        const handleResize = () => {
-            chart.applyOptions({ width: chartRef.current.clientWidth });
-        };
-        window.addEventListener('resize', handleResize);
 
         // FIXME: quick code for Measure tool tip. use Shift + leftClick on chart
         let toolTip = document.createElement('div');
@@ -335,8 +309,6 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
 
             const sourceEvent = param.sourceEvent;
             if (sourceEvent.shiftKey) {
-                console.log('in shift + click');
-
                 let x = param.point.x;
                 let y = param.point.y;
                 let startCoordinatePrice = klineSeries.coordinateToPrice(y);
@@ -347,7 +319,6 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
                 toolTip.style.display = 'block';
                 toolTip.style.left = toolTipX + 'px';
                 toolTip.style.top = toolTipY + 'px';
-                toolTip.innerHTML = `<div>start: ${startCoordinatePrice}, </div>`;
                 chart.subscribeCrosshairMove((param) =>
                     handleCrossHairMoveRulerWrapper(param, startCoordinatePrice)
                 );
@@ -363,7 +334,6 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
         chart.subscribeCrosshairMove(handleCrossHairMoveForLegend);
 
         return () => {
-            window.removeEventListener('resize', handleResize);
             chart.unsubscribeClick(MeasureClickHandler);
             chart.unsubscribeCrosshairMove(handleCrossHairMoveForLegend);
             chart.remove();
@@ -401,30 +371,29 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo, plotMA = true }
 
     useEffect(() => {
         if (newDataFromWS) {
+            // newDataFromWS from utils.mapWSKlineData, type {time, open, high ..., volume}
+            // newVolData type {time, value}
+            let newVolData = chartUtils.mapDataForVolumeHistogram(newDataFromWS);
+
             klineSeriesDrawer.update(newDataFromWS);
+            volSeriesDrawer.update(newVolData);
 
-            let newVolumeData = chartUtils.mapDataForVolumeHistogram(newDataFromWS);
-            volSeriesDrawer.update(newVolumeData);
-
-            let elem = document.getElementById(`candle-countdown-${symbol}-${interval}`);
+            // update html elems
             let kline_event_time = newDataFromWS['e'];
-            let remainingTime = getRemainingTime(kline_event_time, interval);
 
-            // console.log(kline_event_time);
-            // console.log(remainingTime);
-            elem.innerHTML = remainingTime;
+            ohlcLegendRef.current.innerHTML = formatOHLCLegend(newDataFromWS);
+            volLegendRef.current.innerHTML = formatVolLegend(newVolData);
+            timeRemainingLegendRef.current.innerHTML = fKlineCountdown(kline_event_time, interval);
 
-            if (plotMA) {
-                const currentKlineData = klineSeriesDrawer.data();
+            // moving average
+            const currentKlineData = klineSeriesDrawer.data();
+            let latestMA10 = calculateLatestSMA(currentKlineData, MA10_LOOKBACK);
+            let latestMA20 = calculateLatestSMA(currentKlineData, MA20_LOOKBACK);
+            let latestMA50 = calculateLatestSMA(currentKlineData, MA50_LOOKBACK);
 
-                let latestMA10 = calculateLatestSMA(currentKlineData, MA10_LOOKBACK);
-                let latestMA20 = calculateLatestSMA(currentKlineData, MA20_LOOKBACK);
-                let latestMA50 = calculateLatestSMA(currentKlineData, MA50_LOOKBACK);
-
-                lineSeriesDrawerMA10.update(latestMA10);
-                lineSeriesDrawerMA20.update(latestMA20);
-                lineSeriesDrawerMA50.update(latestMA50);
-            }
+            lineSeriesDrawerMA10.update(latestMA10);
+            lineSeriesDrawerMA20.update(latestMA20);
+            lineSeriesDrawerMA50.update(latestMA50);
         }
     }, [newDataFromWS]);
 
@@ -443,8 +412,6 @@ export default function ChartContainer({
     const intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w'];
     const [currentSymbol, setCurrentSymbol] = useState(symbol);
     const chartContainerRef = useRef(null);
-
-    // FIXME: quickfix passing symbol from parent App, children -> ChartContainer & OrderContainer. let ChartContainer change symbol for OrderContainer as well
 
     const [currentInterval, setCurrentInterval] = useState(interval);
     const [klineData, setKlineData] = useState([]);
@@ -563,6 +530,25 @@ export default function ChartContainer({
 
 // FIXME: hacks
 
+function formatOHLCLegend(kline) {
+    let amplitude = Math.abs(((kline.high - kline.low) / kline.low) * 100).toFixed(2);
+
+    let legend = `O: ${kline.open} H: ${kline.high} L: ${kline.low} C: ${kline.close} A: ${amplitude}%`;
+
+    return legend;
+}
+
+function formatVolLegend(volBar) {
+    const volumeNumberFormatter = Intl.NumberFormat('en', {
+        notation: 'compact',
+        maximumFractionDigits: 2,
+    });
+
+    let legend = `vol: ${volumeNumberFormatter.format(volBar.value)}`;
+
+    return legend;
+}
+
 // calculate full all data
 function calculateSMAFromKline(data, count) {
     // from https://jsfiddle.net/TradingView/537kjtfg/
@@ -618,7 +604,7 @@ function calculateLatestSMA(data, count) {
 }
 
 // https://stackoverflow.com/questions/31337370/how-to-convert-seconds-to-hhmmss-in-moment-js
-function getRemainingTime(epoch_ms, interval) {
+function fKlineCountdown(epoch_ms, interval) {
     // interval = 1m 3m 15m 1h 4h 1d 1w
 
     const interval_to_ms = {
@@ -646,17 +632,4 @@ function getRemainingTime(epoch_ms, interval) {
         .format(format);
 
     return remainingTime;
-}
-
-function moolah_round(num, locale = 'en') {
-    // Nine Zeroes for Billions
-    return Math.abs(Number(num)) >= 1.0e9
-        ? Math.round(Math.abs(Number(num)) / 1.0e9) + ' B'
-        : // Six Zeroes for Millions
-        Math.abs(Number(num)) >= 1.0e6
-        ? Math.round(Math.abs(Number(num)) / 1.0e6) + ' M'
-        : // Three Zeroes for Thousands
-        Math.abs(Number(num)) >= 1.0e3
-        ? Math.round(Math.abs(Number(num)) / 1.0e3) + ' K'
-        : Math.abs(Number(num));
 }
