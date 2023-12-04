@@ -30,7 +30,7 @@ export default function App() {
     const [symbolsFilterInfo, setSymbolsFilterInfo] = useState(null);
     // const symbols = Object.keys(symbolsFilterInfo); // return array of obj keys
 
-    const hotCoins = ['ORDIUSDT', 'IOTAUSDT'];
+    const hotCoins = ['BTCUSDT', 'ETHUSDT', 'ORDIUSDT', 'IOTAUSDT'];
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
     useEffect(() => {
@@ -83,7 +83,7 @@ export default function App() {
                                     symbolsFilterInfo={symbolsFilterInfo}
                                     setOrderSymbol={setOrderSymbol}
                                     sxProps={sxPropsChartContainer}
-                                    symbol={'BTCUSDT'}
+                                    symbol={hotCoins[0]}
                                     interval={'1d'}
                                 />
                             </Grid>
@@ -92,25 +92,25 @@ export default function App() {
                                     symbolsFilterInfo={symbolsFilterInfo}
                                     setOrderSymbol={setOrderSymbol}
                                     sxProps={sxPropsChartContainer}
-                                    symbol={'ETHUSDT'}
-                                    interval={'1h'}
-                                />
-                            </Grid>
-                            <Grid item md={6}>
-                                <ChartContainer
-                                    symbolsFilterInfo={symbolsFilterInfo}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    symbol={hotCoins[0]}
-                                    interval={'1h'}
-                                />
-                            </Grid>
-                            <Grid item md={6}>
-                                <ChartContainer
-                                    symbolsFilterInfo={symbolsFilterInfo}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
                                     symbol={hotCoins[1]}
+                                    interval={'1h'}
+                                />
+                            </Grid>
+                            <Grid item md={6}>
+                                <ChartContainer
+                                    symbolsFilterInfo={symbolsFilterInfo}
+                                    setOrderSymbol={setOrderSymbol}
+                                    sxProps={sxPropsChartContainer}
+                                    symbol={hotCoins[2]}
+                                    interval={'1h'}
+                                />
+                            </Grid>
+                            <Grid item md={6}>
+                                <ChartContainer
+                                    symbolsFilterInfo={symbolsFilterInfo}
+                                    setOrderSymbol={setOrderSymbol}
+                                    sxProps={sxPropsChartContainer}
+                                    symbol={hotCoins[3]}
                                     interval={'1h'}
                                 />
                             </Grid>

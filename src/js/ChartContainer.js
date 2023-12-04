@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 import { createChart, TickMarkType } from 'lightweight-charts';
-import { Autocomplete, Box, Stack, TextField, tooltipClasses } from '@mui/material';
+import { Autocomplete, Box, Checkbox, FormControlLabel, Stack, TextField } from '@mui/material';
 import moment from 'moment';
 
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
@@ -53,7 +53,6 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
     const [newDataFromWS, setNewDataFromWS] = useState();
     const [klineSeriesDrawer, setKlineSeriesDrawer] = useState(null);
     const [volSeriesDrawer, setVolSeriesDrawer] = useState(null);
-    const [oiSeriesDrawer, setOISeriesDrawer] = useState(null);
 
     const [lineSeriesDrawerMA10, setLineSeriesDrawerMA10] = useState(null); // FIXME: lineSeriesDrawer why use useState
     const [lineSeriesDrawerMA20, setLineSeriesDrawerMA20] = useState(null);
@@ -199,6 +198,8 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
 
         // for oi histogram bars
         let oiSeries;
+        let fetchOIIntervalId;
+
         if (oiHistData.length != 0) {
             oiSeries = chart.addHistogramSeries(oiOptions);
             oiSeries.priceScale().applyOptions({
@@ -209,22 +210,22 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
                 },
             });
             oiSeries.setData(oiHistData);
-            setOISeriesDrawer(oiSeries);
+
+            fetchOIIntervalId = setInterval(() => {
+                const fetch_options = {
+                    method: 'GET',
+                };
+
+                const url = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`;
+                fetch(url, fetch_options)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        let parsedOIData = mapOIData(data, interval);
+
+                        oiSeries.update(parsedOIData);
+                    });
+            }, 15000);
         }
-
-        // let fetchOIIntervalId = setInterval(() => {
-        //     const fetch_options = {
-        //         method: 'GET',
-        //     };
-        //     const url = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`;
-
-        //     fetch(url, fetch_options)
-        //         .then((res) => res.json())
-        //         .then((data) => {
-        //             let parsedOIData = mapOIData(data, interval);
-        //             oiSeries.update(parsedOIData);
-        //         });
-        // }, 15000);
 
         klineSeries.setData(klineData);
         volumeSeries.setData(volData);
@@ -307,7 +308,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
 
             if (oiSeries) {
                 let oiBar = param.seriesData.get(oiSeries);
-                oiLegend.innerHTML = oiBar ? `oi: ${oiBar.value}` : 'NaN';
+                oiLegend.innerHTML = formatOILegend(oiBar);
             }
         }
 
@@ -384,7 +385,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
             chart.unsubscribeClick(MeasureClickHandler);
             chart.unsubscribeCrosshairMove(handleCrossHairMoveForLegend);
             chart.remove();
-            // clearInterval(fetchOIIntervalId); // FIXME: refactor next time
+            clearInterval(fetchOIIntervalId); // FIXME: refactor next time
         };
     }, [klineData]);
 
@@ -479,13 +480,14 @@ export default function ChartContainer({
 }) {
     // const symbols = ['BTCUSDT', 'ETHUSDT', 'LINKUSDT', 'TRBUSDT', 'SOLUSDT', '1000PEPEUSDT'];
     const symbols = Object.keys(symbolsFilterInfo); // return array of obj keys
-    const intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w'];
+    const intervals = ['1m', '3m', '5m', '15m', '1h', '4h', '1d', '1w'];
     const [currentSymbol, setCurrentSymbol] = useState(symbol);
     const chartContainerRef = useRef(null);
 
     const [currentInterval, setCurrentInterval] = useState(interval);
     const [klineData, setKlineData] = useState([]);
     const [oiHistData, setOIHistData] = useState([]);
+    const [showOI, setShowOI] = useState(false);
 
     // oi_hist_endpoint params interval 5m 15m 30m 1h 2h 4h 6h 12h 1d
     const oiHistIntervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
@@ -523,7 +525,7 @@ export default function ChartContainer({
                 setKlineData(parsedData);
             });
 
-        if (validOIInterval) {
+        if (showOI && validOIInterval) {
             const oi_hist_endpoint = chartUtils.craft_binance_oi_hist_endpoint(
                 currentSymbol,
                 currentInterval
@@ -552,7 +554,7 @@ export default function ChartContainer({
             setOIHistData([]);
             elem.removeEventListener('dblclick', onDblClickListener);
         };
-    }, [currentSymbol, currentInterval]);
+    }, [currentSymbol, currentInterval, showOI]);
 
     return (
         <Box
@@ -587,9 +589,9 @@ export default function ChartContainer({
                     autoHighlight
                     disableClearable
                     sx={{
-                        width: '140px',
-                        maxWidth: '140px',
-                        minWidth: '140px',
+                        width: '124px',
+                        maxWidth: '124px',
+                        minWidth: '124px',
                     }}
                 ></Autocomplete>
 
@@ -607,9 +609,17 @@ export default function ChartContainer({
                         </IntervalButton>
                     )
                 )}
+
+                <FormControlLabel
+                    value="start"
+                    control={<Checkbox onChange={(e) => setShowOI(!showOI)} />}
+                    label="oi"
+                    labelPlacement="start"
+                />
             </Stack>
 
-            {validOIInterval
+            {/* FIXME: rethink this ternary logic */}
+            {validOIInterval && showOI
                 ? klineData.length != 0 &&
                   oiHistData.length != 0 && (
                       <Chart
@@ -625,7 +635,7 @@ export default function ChartContainer({
                           symbol={currentSymbol}
                           interval={currentInterval}
                           klineData={klineData}
-                          oiHistData={oiHistData}
+                          oiHistData={[]}
                           symbolsFilterInfo={symbolsFilterInfo}
                       />
                   )}
@@ -674,6 +684,20 @@ function formatVolLegend(volBar) {
     });
 
     let legend = `vol: ${volumeNumberFormatter.format(volBar.value)}`;
+    return legend;
+}
+
+// FIXME: similar fn to formatVolLegend
+function formatOILegend(oiBar) {
+    if (!oiBar) {
+        return 'oi: NaN';
+    }
+    const oiNumberFormatter = Intl.NumberFormat('en', {
+        notation: 'compact',
+        maximumFractionDigits: 2,
+    });
+
+    let legend = `oi: ${oiNumberFormatter.format(oiBar.value)}`;
     return legend;
 }
 
@@ -737,6 +761,7 @@ function roundToNearestInterval(epoch_ms, interval) {
     const interval_to_ms = {
         '1m': 60 * 1000,
         '3m': 3 * 60 * 1000,
+        '5m': 5 * 60 * 1000,
         '15m': 15 * 60 * 1000,
         '1h': 60 * 60 * 1000,
         '4h': 4 * 60 * 60 * 1000,
@@ -758,6 +783,7 @@ function fKlineCountdown(epoch_ms, interval) {
     const interval_to_ms = {
         '1m': 60 * 1000,
         '3m': 3 * 60 * 1000,
+        '5m': 5 * 60 * 1000,
         '15m': 15 * 60 * 1000,
         '1h': 60 * 60 * 1000,
         '4h': 4 * 60 * 60 * 1000,

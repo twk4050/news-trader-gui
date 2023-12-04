@@ -224,11 +224,6 @@ function craft_binance_kline_end_point(symbol, interval) {
 
 function craft_binance_oi_hist_endpoint(symbol, interval) {
     // interval 5m 15m 30m 1h 2h 4h 6h 12h 1d
-    const intervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
-
-    if (!intervalOptions.includes(interval)) {
-        interval = '5m';
-    }
 
     const binance_oi_hist_endpoint = 'https://fapi.binance.com' + '/futures/data/openInterestHist';
     const params = {
