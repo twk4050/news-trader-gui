@@ -47,21 +47,8 @@ const MA50_Options = {
 
 const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
 
-const mock_oi_data = [
-    { time: 1701586800.0, value: 1990444 },
-    { time: 1701590400.0, value: 2027274 },
-    { time: 1701594000.0, value: 2070516 },
-    { time: 1701597600.0, value: 2106620 },
-    { time: 1701601200.0, value: 2054970 },
-    { time: 1701604800.0, value: 2018190 },
-    { time: 1701608400.0, value: 2022518 },
-    { time: 1701612000.0, value: 1995017 },
-    { time: 1701615600.0, value: 1986856 },
-    { time: 1701619200.0, value: 2024984 },
-];
-
 // FIXME: junk code
-function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
+function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
     // [{open, high, low, close, time}, {open, high ...}]
     const [newDataFromWS, setNewDataFromWS] = useState();
     const [klineSeriesDrawer, setKlineSeriesDrawer] = useState(null);
@@ -199,16 +186,6 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
         const chart = createChart(chartRef.current, chartOptions);
         const klineSeries = chart.addCandlestickSeries(klineOptions);
         const volumeSeries = chart.addHistogramSeries(volumeOptions);
-        const oiSeries = chart.addHistogramSeries(oiOptions);
-
-        oiSeries.priceScale().applyOptions({
-            // set the positioning of the volume series
-            scaleMargins: {
-                top: 0.8, // highest point of the series will be 70% away from the top
-                bottom: 0.1,
-            },
-        });
-        oiSeries.setData(mock_oi_data);
 
         volumeSeries.priceScale().applyOptions({
             // set the positioning of the volume series
@@ -219,6 +196,35 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
         });
 
         let volData = klineData.map(chartUtils.mapDataForVolumeHistogram);
+
+        // for oi histogram bars
+        let oiSeries;
+        if (oiHistData.length != 0) {
+            oiSeries = chart.addHistogramSeries(oiOptions);
+            oiSeries.priceScale().applyOptions({
+                // set the positioning of the volume series
+                scaleMargins: {
+                    top: 0.8, // highest point of the series will be 70% away from the top
+                    bottom: 0.1,
+                },
+            });
+            oiSeries.setData(oiHistData);
+            setOISeriesDrawer(oiSeries);
+        }
+
+        // let fetchOIIntervalId = setInterval(() => {
+        //     const fetch_options = {
+        //         method: 'GET',
+        //     };
+        //     const url = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`;
+
+        //     fetch(url, fetch_options)
+        //         .then((res) => res.json())
+        //         .then((data) => {
+        //             let parsedOIData = mapOIData(data, interval);
+        //             oiSeries.update(parsedOIData);
+        //         });
+        // }, 15000);
 
         klineSeries.setData(klineData);
         volumeSeries.setData(volData);
@@ -254,6 +260,10 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
         const volLegend = document.createElement('div');
         volLegend.style = 'padding: 4px 0px 0px 0px; color: white;';
 
+        const oiLegend = document.createElement('div');
+        oiLegend.style = 'padding: 8px 0px 0px 0px; color: white;';
+        oiLegend.innerHTML = 'oi: ';
+
         const timeRemainingLegend = document.createElement('div');
         timeRemainingLegend.style = 'position: absolute; top: 0;  right: 70px; color: yellow;';
 
@@ -262,6 +272,7 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
         legend.appendChild(ohlcLegend);
         legend.appendChild(volLegend);
         legend.appendChild(timeRemainingLegend);
+        legend.appendChild(oiLegend);
 
         ohlcLegendRef.current = ohlcLegend;
         volLegendRef.current = volLegend;
@@ -287,12 +298,17 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
             let kline = param.seriesData.get(klineSeries);
             let volBar = param.seriesData.get(volumeSeries);
 
-            if (!kline) {
+            if (!kline || !volBar) {
                 return;
             }
 
             ohlcLegend.innerHTML = formatOHLCLegend(kline);
             volLegend.innerHTML = formatVolLegend(volBar);
+
+            if (oiSeries) {
+                let oiBar = param.seriesData.get(oiSeries);
+                oiLegend.innerHTML = oiBar ? `oi: ${oiBar.value}` : 'NaN';
+            }
         }
 
         // FIXME: quick code for Measure tool tip. use Shift + leftClick on chart
@@ -368,6 +384,7 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
             chart.unsubscribeClick(MeasureClickHandler);
             chart.unsubscribeCrosshairMove(handleCrossHairMoveForLegend);
             chart.remove();
+            // clearInterval(fetchOIIntervalId); // FIXME: refactor next time
         };
     }, [klineData]);
 
@@ -416,6 +433,28 @@ function Chart({ symbol, interval, klineData, symbolsFilterInfo }) {
             volLegendRef.current.innerHTML = formatVolLegend(newVolData);
             timeRemainingLegendRef.current.innerHTML = fKlineCountdown(kline_event_time, interval);
 
+            // FIXME: used websocket event timer instead of interval to fetch n update oi
+            // FIXME: find better way to do this
+
+            // let epoch_seconds = Math.ceil(kline_event_time / 1000);
+            // if (epoch_seconds % 15 == 0) {
+            //     console.log(epoch_seconds, 'getting data !!');
+
+            //     const fetch_options = {
+            //         method: 'GET',
+            //     };
+            //     const url = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`;
+
+            //     fetch(url, fetch_options)
+            //         .then((res) => res.json())
+            //         .then((data) => {
+            //             let parsedOIData = mapOIData(data, interval);
+            //             oiSeriesDrawer.update(parsedOIData);
+
+            //             setGettingData(false);
+            //         });
+            // }
+
             // moving average
             const currentKlineData = klineSeriesDrawer.data();
             let latestMA10 = calculateLatestSMA(currentKlineData, MA10_LOOKBACK);
@@ -446,6 +485,11 @@ export default function ChartContainer({
 
     const [currentInterval, setCurrentInterval] = useState(interval);
     const [klineData, setKlineData] = useState([]);
+    const [oiHistData, setOIHistData] = useState([]);
+
+    // oi_hist_endpoint params interval 5m 15m 30m 1h 2h 4h 6h 12h 1d
+    const oiHistIntervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
+    const validOIInterval = oiHistIntervalOptions.includes(currentInterval); // boolean
 
     function handleOnChangeSymbol(event, newSymbol) {
         setKlineData([]);
@@ -466,6 +510,7 @@ export default function ChartContainer({
             currentSymbol,
             currentInterval
         );
+
         const fetch_options = {
             method: 'GET',
         };
@@ -478,6 +523,21 @@ export default function ChartContainer({
                 setKlineData(parsedData);
             });
 
+        if (validOIInterval) {
+            const oi_hist_endpoint = chartUtils.craft_binance_oi_hist_endpoint(
+                currentSymbol,
+                currentInterval
+            );
+
+            fetch(oi_hist_endpoint, fetch_options)
+                .then((res) => res.json())
+                .then((data) => {
+                    console.log('getting oi', oi_hist_endpoint);
+                    let parsedOIHistData = data.map(mapOIHistData);
+                    setOIHistData(parsedOIHistData);
+                });
+        }
+
         const elem = chartContainerRef.current;
         function onDblClickListener(e) {
             if (!!setOrderSymbol) {
@@ -488,6 +548,8 @@ export default function ChartContainer({
         elem.addEventListener('dblclick', onDblClickListener);
 
         return () => {
+            setKlineData([]);
+            setOIHistData([]);
             elem.removeEventListener('dblclick', onDblClickListener);
         };
     }, [currentSymbol, currentInterval]);
@@ -547,19 +609,55 @@ export default function ChartContainer({
                 )}
             </Stack>
 
-            {klineData.length != 0 && (
-                <Chart
-                    symbol={currentSymbol}
-                    interval={currentInterval}
-                    klineData={klineData}
-                    symbolsFilterInfo={symbolsFilterInfo}
-                />
-            )}
+            {validOIInterval
+                ? klineData.length != 0 &&
+                  oiHistData.length != 0 && (
+                      <Chart
+                          symbol={currentSymbol}
+                          interval={currentInterval}
+                          klineData={klineData}
+                          oiHistData={oiHistData}
+                          symbolsFilterInfo={symbolsFilterInfo}
+                      />
+                  )
+                : klineData.length != 0 && (
+                      <Chart
+                          symbol={currentSymbol}
+                          interval={currentInterval}
+                          klineData={klineData}
+                          oiHistData={oiHistData}
+                          symbolsFilterInfo={symbolsFilterInfo}
+                      />
+                  )}
         </Box>
     );
 }
 
 // FIXME: hacks
+function mapOIHistData(oiHist) {
+    // for /futures/data/openInterestHist
+    //     {
+    //         "symbol":"BTCUSDT",
+    //          "sumOpenInterest":"20403.63700000",  // total open interest
+    //          "sumOpenInterestValue": "150570784.07809979",   // total open interest value
+    //          "timestamp":"1583127900000"
+    //    }
+    //  map above to {time, value}
+
+    return {
+        time: parseFloat(oiHist['timestamp']) / 1000,
+        value: parseFloat(oiHist['sumOpenInterest']),
+    };
+}
+
+function mapOIData(oi, interval) {
+    // for /fapi/v1/openInterest
+    // oi data {openInterest, symbol, time} convert to -> {time, value}
+    return {
+        time: roundToNearestInterval(oi['time'], interval) / 1000,
+        value: parseFloat(oi['openInterest']),
+    };
+}
 
 function formatOHLCLegend(kline) {
     let amplitude = Math.abs(((kline.high - kline.low) / kline.low) * 100).toFixed(2);
@@ -631,6 +729,26 @@ function calculateLatestSMA(data, count) {
     };
 
     return result;
+}
+
+// similar fn to fKlineCountdown
+function roundToNearestInterval(epoch_ms, interval) {
+    // round down epoch_ms to nearest interval
+    const interval_to_ms = {
+        '1m': 60 * 1000,
+        '3m': 3 * 60 * 1000,
+        '15m': 15 * 60 * 1000,
+        '1h': 60 * 60 * 1000,
+        '4h': 4 * 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000,
+        '1w': 7 * 24 * 60 * 60 * 1000,
+    };
+
+    const interval_ms = interval_to_ms[interval];
+    let ms_passed = epoch_ms % interval_ms;
+
+    let nearestInterval_ms = epoch_ms - ms_passed;
+    return nearestInterval_ms;
 }
 
 // https://stackoverflow.com/questions/31337370/how-to-convert-seconds-to-hhmmss-in-moment-js

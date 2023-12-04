@@ -222,6 +222,25 @@ function craft_binance_kline_end_point(symbol, interval) {
     return binance_kline_endpoint + '?' + paramString;
 }
 
+function craft_binance_oi_hist_endpoint(symbol, interval) {
+    // interval 5m 15m 30m 1h 2h 4h 6h 12h 1d
+    const intervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
+
+    if (!intervalOptions.includes(interval)) {
+        interval = '5m';
+    }
+
+    const binance_oi_hist_endpoint = 'https://fapi.binance.com' + '/futures/data/openInterestHist';
+    const params = {
+        symbol: symbol,
+        period: interval,
+        limit: 500,
+    };
+
+    let paramString = qs.stringify(params);
+    return binance_oi_hist_endpoint + '?' + paramString;
+}
+
 function mapHTTPKlineData(kline) {
     return {
         time: kline[0] / 1000,
@@ -265,6 +284,7 @@ const newsUtils = {
 
 const chartUtils = {
     craft_binance_kline_end_point,
+    craft_binance_oi_hist_endpoint,
     mapHTTPKlineData,
     mapWSKlineData,
     mapDataForVolumeHistogram,
