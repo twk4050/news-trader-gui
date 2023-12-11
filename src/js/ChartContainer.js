@@ -480,7 +480,7 @@ export default function ChartContainer({
 }) {
     // const symbols = ['BTCUSDT', 'ETHUSDT', 'LINKUSDT', 'TRBUSDT', 'SOLUSDT', '1000PEPEUSDT'];
     const symbols = Object.keys(symbolsFilterInfo); // return array of obj keys
-    const intervals = ['1m', '3m', '5m', '15m', '1h', '4h', '1d', '1w'];
+    const intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w', '5m'];
     const [currentSymbol, setCurrentSymbol] = useState(symbol);
     const chartContainerRef = useRef(null);
 

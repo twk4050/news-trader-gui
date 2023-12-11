@@ -30,7 +30,7 @@ export default function App() {
     const [symbolsFilterInfo, setSymbolsFilterInfo] = useState(null);
     // const symbols = Object.keys(symbolsFilterInfo); // return array of obj keys
 
-    const hotCoins = ['BTCUSDT', 'ETHUSDT', 'ORDIUSDT', 'IOTAUSDT'];
+    const hotCoins = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'ORDIUSDT'];
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
     useEffect(() => {
