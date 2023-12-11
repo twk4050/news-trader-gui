@@ -8,7 +8,7 @@ import { BinanceUtils, GLOBAL_API } from './utils';
 function OrderComponent({ symbol, price, filterInfo }) {
     // price: <number>
     const initialSpread = 0.2;
-    const order_nvs = [1500, 5800, 15800]; // order notional value, use to map BuyButton n SellButtons
+    const order_nvs = [1500, 6000, 17000]; // order notional value, use to map BuyButton n SellButtons
 
     const symbol_tick_size = filterInfo.tickSize;
     const precision = BinanceUtils.getPrecisionForToFixed(symbol_tick_size); //filterInfo.pricePrecision;
