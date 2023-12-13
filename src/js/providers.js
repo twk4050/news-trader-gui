@@ -10,8 +10,11 @@ export const BinanceWSContext = createContext();
 // let msg_object = {"method": "SUBSCRIBE", "params": ['btcusdt@1h'], "id":224}
 // JSON.stringify(msg_object);
 
+// FIXME: ws.current?.send how does this work, why doesnt children component not receive null at first
+// handle restarting connection
+
 export const BinanceWebSocketProvider = ({ children }) => {
-    const ws = useRef(null);
+    const wsRef = useRef(null);
     const channels = useRef({}); // mapping streamName - function. eg: {'btcusdt@kline_1h': cbUpdateChart func}
 
     const subscribe = (channel, callback) => {
@@ -25,22 +28,36 @@ export const BinanceWebSocketProvider = ({ children }) => {
 
     useEffect(() => {
         const binance_ws_url = 'wss://fstream.binance.com/ws';
-        const socket = new WebSocket(binance_ws_url);
+        let ws = new WebSocket(binance_ws_url);
 
-        socket.onopen = () => setIsOpen(true);
-        socket.onclose = () => {
-            console.log('ws connection closing ... reconnecting ...');
+        console.log('attempting to connect:', binance_ws_url);
 
-            setIsOpen(false);
-            // ws = new WebSocket(binance_ws_url);
-            // ws.onmessage = cb;
+        const onOpen = () => {
+            console.log('connection opened:', binance_ws_url);
+            setIsOpen(true);
         };
-        socket.onmessage = (e) => {
+        const onClose = () => {
+            console.log('ws connection closed ...');
+            console.log('reconnecting ...');
+            setIsOpen(false);
+        };
+
+        ws.onopen = onOpen;
+        ws.onclose = () => {
+            onClose();
+
+            // re init ws again FIXME: doesnt work. ws reinit but not able to pass down to children component
+            // ws = new WebSocket(binance_ws_url);
+            // ws.onopen = onOpen;
+            // ws.onclose = onClose;
+            // wsRef.current = ws;
+        };
+        ws.onmessage = (e) => {
             const data = JSON.parse(e.data);
 
             // sub / unsub / list subscription message
             if (!('e' in data)) {
-                console.log(e);
+                // console.log(e);
                 return;
             }
 
@@ -55,15 +72,14 @@ export const BinanceWebSocketProvider = ({ children }) => {
             }
         };
 
-        ws.current = socket;
+        wsRef.current = ws;
 
         return () => {
-            socket.close();
+            ws.close();
         };
     }, []);
 
-    // FIXME: ws.current?.send how does this work
-    const ret = [isOpen, ws.current?.send.bind(ws.current), subscribe, unsubscribe];
+    const ret = [isOpen, wsRef.current?.send.bind(wsRef.current), subscribe, unsubscribe];
     return <BinanceWSContext.Provider value={ret}>{children}</BinanceWSContext.Provider>;
 };
 

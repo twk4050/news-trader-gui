@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('API123', {
         // v4.2 add new histogram for oi
         // v5 finish up oi histogram
         // v5.1 change hotcoins
+        // v6 change websocket connections. 1 ws connection to handle multi charts data. * React.useContext .createContext
         version: 'v5.1',
     },
 });

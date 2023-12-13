@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 
 import { createChart, TickMarkType } from 'lightweight-charts';
 import { Autocomplete, Box, Checkbox, FormControlLabel, Stack, TextField } from '@mui/material';
@@ -7,14 +7,7 @@ import moment from 'moment';
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
 import { chartUtils, BinanceUtils } from './utils';
 
-/* 
-ChartContainer
-- from symbol and interval, getKlineData
-- if klineData, render Chart
-
-Chart props (symbol?, interval?, klineData, symbolsFilterInfo)
-- tickSize = symbolsFilterInfo[symbol]['tickSize'] # can remove prop drilling 'symbolsFilterInfo' and pass tickSize
-*/
+import { BinanceWSContext } from './providers';
 
 // interface SeriesOptionCommon n LineStyleOptions
 // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/SeriesOptionsCommon
@@ -47,8 +40,9 @@ const MA50_Options = {
 
 const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
 
-// FIXME: junk code
 function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
+    const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
+
     // [{open, high, low, close, time}, {open, high ...}]
     const [newDataFromWS, setNewDataFromWS] = useState();
     const [klineSeriesDrawer, setKlineSeriesDrawer] = useState(null);
@@ -62,7 +56,6 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
     const MA20_LOOKBACK = 20;
     const MA50_LOOKBACK = 50;
 
-    const wsRef = useRef(null);
     const chartRef = useRef();
     const ohlcLegendRef = useRef();
     const volLegendRef = useRef();
@@ -70,7 +63,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
 
     // plot chart with kline data from binance kline api
     useEffect(() => {
-        console.log('plotting chart ', symbol, interval, 'test123');
+        console.log('plotting chart', symbol, interval);
 
         const tickSize = symbolsFilterInfo[symbol]['tickSize'];
 
@@ -389,35 +382,53 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
         };
     }, [klineData]);
 
-    // handle WS connection
+    // run useEffect if there are changes to WS Connection 'isOpen',
+    // if not open, return
     useEffect(() => {
-        if (
-            wsRef.current === null ||
-            wsRef.current.readyState === WebSocket.CLOSING ||
-            wsRef.current.readyState === WebSocket.CLOSED
-        ) {
-            const ws_url = `wss://fstream.binance.com/ws/${symbol.toLowerCase()}@kline_${interval}`;
-            console.log(`connecting to ${ws_url}`);
-            // let x = new WebSocket(ws_url);
-
-            wsRef.current = new WebSocket(ws_url);
-            wsRef.current.onopen = () => console.log(`connected to ${ws_url}`);
-
-            wsRef.current.onmessage = (event) => {
-                let data = JSON.parse(event.data);
-
-                let parsedKlineData = chartUtils.mapWSKlineData(data);
-
-                setNewDataFromWS(parsedKlineData);
-            };
+        /* 
+        1. send msg to websocket to subscribe to stream  {symbol}@kline_{interval}
+        2. wsProvider channels is a mapping of channel_name to callbackfn. eg 'btcusdt@kline_1h' -> updateKlineCharts func
+        - use 'subscribeToStreamName' and 'unsubscribe' to add func to streamName
+        - channel_name = {symbol}@kline_{interval} // symbol lowerCase
+        - callback_fn = from e.data json, chartUtils.mapWSKLineData and setNewData
+        3. teardown fn = send msg to websocket to unsubscribe, del callback fn from wsProvider
+        */
+        if (!isOpen) {
+            return;
         }
 
-        return () => {
-            console.log(`closing connection: ${wsRef.current.url}`);
-            wsRef.current.close();
-        };
-    }, [symbol, interval]);
+        const streamName = `${symbol.toLowerCase()}@kline_${interval}`; // binance calls it streamName
+        const randomNumber = generateRandomNumber();
 
+        let subscribeBinanceTopic = {
+            method: 'SUBSCRIBE',
+            params: [streamName],
+            id: randomNumber,
+        };
+
+        console.log(`sending ${streamName} to binance ws to subscribe`);
+        wsSendMsg(JSON.stringify(subscribeBinanceTopic));
+
+        const cb = (data) => {
+            let parsedKlineData = chartUtils.mapWSKlineData(data);
+            setNewDataFromWS(parsedKlineData);
+        };
+        subscribeToStreamName(streamName, cb);
+
+        // teardown
+        return () => {
+            console.log(`sending ${streamName} to binance ws to unsubscribe`);
+            let unsubscribeBinanceTopic = {
+                method: 'UNSUBSCRIBE',
+                params: [streamName],
+                id: randomNumber,
+            };
+            wsSendMsg(JSON.stringify(unsubscribeBinanceTopic));
+            unsubscribe(streamName, cb);
+        };
+    }, [isOpen]);
+
+    // if newDataFromWS, update kline / volumeHistogram / legends / ma indicators
     useEffect(() => {
         if (newDataFromWS) {
             // newDataFromWS from utils.mapWSKlineData, type {time, open, high ..., volume}
@@ -433,28 +444,6 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
             ohlcLegendRef.current.innerHTML = formatOHLCLegend(newDataFromWS);
             volLegendRef.current.innerHTML = formatVolLegend(newVolData);
             timeRemainingLegendRef.current.innerHTML = fKlineCountdown(kline_event_time, interval);
-
-            // FIXME: used websocket event timer instead of interval to fetch n update oi
-            // FIXME: find better way to do this
-
-            // let epoch_seconds = Math.ceil(kline_event_time / 1000);
-            // if (epoch_seconds % 15 == 0) {
-            //     console.log(epoch_seconds, 'getting data !!');
-
-            //     const fetch_options = {
-            //         method: 'GET',
-            //     };
-            //     const url = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`;
-
-            //     fetch(url, fetch_options)
-            //         .then((res) => res.json())
-            //         .then((data) => {
-            //             let parsedOIData = mapOIData(data, interval);
-            //             oiSeriesDrawer.update(parsedOIData);
-
-            //             setGettingData(false);
-            //         });
-            // }
 
             // moving average
             const currentKlineData = klineSeriesDrawer.data();
@@ -520,7 +509,6 @@ export default function ChartContainer({
         fetch(kline_end_point, fetch_options)
             .then((res) => res.json())
             .then((data) => {
-                console.log('getting data', currentSymbol, currentInterval);
                 let parsedData = data.map(chartUtils.mapHTTPKlineData);
                 setKlineData(parsedData);
             });
@@ -644,6 +632,12 @@ export default function ChartContainer({
 }
 
 // FIXME: hacks
+
+function generateRandomNumber() {
+    // return random int 0 - 99
+    return Math.floor(Math.random() * 100);
+}
+
 function mapOIHistData(oiHist) {
     // for /futures/data/openInterestHist
     //     {
