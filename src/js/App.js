@@ -38,7 +38,6 @@ export default function App() {
     useEffect(() => {
         // use Object.keys() to get array of all keys
         BinanceUtils.get_symbols_filter_info(setSymbolsFilterInfo);
-        console.log('in app useeffect');
     }, []);
 
     // width = 2 chart 536 x2 + news 320 ~ 1400px
@@ -90,33 +89,33 @@ export default function App() {
                                         interval={'1d'}
                                     />
                                 </Grid>
-                                {/* <Grid item md={6}>
-                                <ChartContainer
-                                    symbolsFilterInfo={symbolsFilterInfo}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    symbol={hotCoins[1]}
-                                    interval={'1h'}
-                                />
-                            </Grid>
-                            <Grid item md={6}>
-                                <ChartContainer
-                                    symbolsFilterInfo={symbolsFilterInfo}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    symbol={hotCoins[2]}
-                                    interval={'1h'}
-                                />
-                            </Grid>
-                            <Grid item md={6}>
-                                <ChartContainer
-                                    symbolsFilterInfo={symbolsFilterInfo}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    symbol={hotCoins[3]}
-                                    interval={'1h'}
-                                />
-                            </Grid> */}
+                                <Grid item md={6}>
+                                    <ChartContainer
+                                        symbolsFilterInfo={symbolsFilterInfo}
+                                        setOrderSymbol={setOrderSymbol}
+                                        sxProps={sxPropsChartContainer}
+                                        symbol={hotCoins[1]}
+                                        interval={'1h'}
+                                    />
+                                </Grid>
+                                <Grid item md={6}>
+                                    <ChartContainer
+                                        symbolsFilterInfo={symbolsFilterInfo}
+                                        setOrderSymbol={setOrderSymbol}
+                                        sxProps={sxPropsChartContainer}
+                                        symbol={hotCoins[2]}
+                                        interval={'1h'}
+                                    />
+                                </Grid>
+                                <Grid item md={6}>
+                                    <ChartContainer
+                                        symbolsFilterInfo={symbolsFilterInfo}
+                                        setOrderSymbol={setOrderSymbol}
+                                        sxProps={sxPropsChartContainer}
+                                        symbol={hotCoins[3]}
+                                        interval={'1h'}
+                                    />
+                                </Grid>
                             </Grid>
                             <Stack
                                 spacing={1}

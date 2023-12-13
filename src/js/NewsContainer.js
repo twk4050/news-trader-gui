@@ -117,7 +117,7 @@ export default function NewsContainer({ sxProps }) {
 
     // NewsContainer re-render factors: 1. new incoming news `newsFeed` 2. sound change
     if (!disableSound) {
-        console.log('playing sound');
+        // console.log('playing sound');
         GLOBAL_API.notify.playSound();
     }
 
