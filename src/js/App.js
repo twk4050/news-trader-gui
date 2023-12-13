@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 
 import { Container } from '@mui/material';
 import { createTheme, ThemeProvider, Grid, Stack } from '@mui/material';
@@ -8,6 +8,8 @@ import ChartContainer from './ChartContainer';
 import NewsContainer from './NewsContainer';
 import OrderContainer from './OrderContainer';
 import { BinanceUtils } from './utils';
+
+import { BinanceWebSocketProvider } from './providers';
 
 const theme = createTheme({
     palette: {
@@ -58,36 +60,37 @@ export default function App() {
 
     return (
         <ThemeProvider theme={theme}>
-            <Container
-                maxWidth={false}
-                disableGutters
-                sx={{
-                    backgroundColor: 'black',
-                    width: '100%',
-                    height: '100vh',
-                    padding: '8px 0px 0px 8px',
-                    display: 'flex',
-                }}
+            <BinanceWebSocketProvider>
+                <Container
+                    maxWidth={false}
+                    disableGutters
+                    sx={{
+                        backgroundColor: 'black',
+                        width: '100%',
+                        height: '100vh',
+                        padding: '8px 0px 0px 8px',
+                        display: 'flex',
+                    }}
 
-                // sx={{ backgroundColor: 'black', width: '100%', height: '1000px' }} // 1500 x 700
-            >
-                {symbolsFilterInfo ? (
-                    <>
-                        <Grid
-                            container
-                            spacing={0.8}
-                            sx={{ minWidth: '1100px', maxWidth: '1100px' }}
-                        >
-                            <Grid item md={6}>
-                                <ChartContainer
-                                    symbolsFilterInfo={symbolsFilterInfo}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    symbol={hotCoins[0]}
-                                    interval={'1d'}
-                                />
-                            </Grid>
-                            <Grid item md={6}>
+                    // sx={{ backgroundColor: 'black', width: '100%', height: '1000px' }} // 1500 x 700
+                >
+                    {symbolsFilterInfo ? (
+                        <>
+                            <Grid
+                                container
+                                spacing={0.8}
+                                sx={{ minWidth: '1100px', maxWidth: '1100px' }}
+                            >
+                                <Grid item md={6}>
+                                    <ChartContainer
+                                        symbolsFilterInfo={symbolsFilterInfo}
+                                        setOrderSymbol={setOrderSymbol}
+                                        sxProps={sxPropsChartContainer}
+                                        symbol={hotCoins[0]}
+                                        interval={'1d'}
+                                    />
+                                </Grid>
+                                {/* <Grid item md={6}>
                                 <ChartContainer
                                     symbolsFilterInfo={symbolsFilterInfo}
                                     setOrderSymbol={setOrderSymbol}
@@ -113,21 +116,26 @@ export default function App() {
                                     symbol={hotCoins[3]}
                                     interval={'1h'}
                                 />
+                            </Grid> */}
                             </Grid>
-                        </Grid>
-                        <Stack spacing={1} direction={'column'} sx={{ padding: '4px 4px 4px 8px' }}>
-                            <NewsContainer sxProps={sxPropsNewsContainer} />
-                            <OrderContainer
-                                symbol={orderSymbol}
-                                symbolsFilterInfo={symbolsFilterInfo}
-                                sxProps={sxPropsOrderContainer}
-                            />
-                        </Stack>
-                    </>
-                ) : (
-                    <div>hello world</div>
-                )}
-            </Container>
+                            <Stack
+                                spacing={1}
+                                direction={'column'}
+                                sx={{ padding: '4px 4px 4px 8px' }}
+                            >
+                                <NewsContainer sxProps={sxPropsNewsContainer} />
+                                <OrderContainer
+                                    symbol={orderSymbol}
+                                    symbolsFilterInfo={symbolsFilterInfo}
+                                    sxProps={sxPropsOrderContainer}
+                                />
+                            </Stack>
+                        </>
+                    ) : (
+                        <div>hello world</div>
+                    )}
+                </Container>
+            </BinanceWebSocketProvider>
         </ThemeProvider>
     );
 }
