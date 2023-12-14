@@ -54,35 +54,43 @@ export const BinanceWebSocketProvider = ({ children }) => {
         };
         ws.onmessage = (e) => {
             const data = JSON.parse(e.data);
+            // json data either array or object
 
-            // sub / unsub / list subscription message
-            if (!('e' in data)) {
-                // console.log(e);
+            if (Array.isArray(data)) {
+                let firstElem = data[0];
+                let eventType = firstElem.e;
+
+                // All Market Mini Tickers Stream
+                if (eventType == '24hrMiniTicker') {
+                    let channelName = '!miniTicker@arr';
+
+                    if (channels.current[channelName]) {
+                        channels.current[channelName](data);
+                    }
+                }
+
                 return;
             }
 
-            let eventType = data.e;
+            if ('e' in data) {
+                let eventType = data.e;
 
-            // kline Streams
-            if (eventType == 'kline') {
-                // data message
-                let k = data.k;
-                let k_symbol = k.s;
-                let k_interval = k.i;
+                // kline Stream
+                if (eventType == 'kline') {
+                    let k = data.k;
+                    let k_symbol = k.s;
+                    let k_interval = k.i;
 
-                const klineChannel = `${k_symbol.toLowerCase()}@kline_${k_interval}`;
-                if (channels.current[klineChannel]) {
-                    channels.current[klineChannel](data);
+                    const klineChannel = `${k_symbol.toLowerCase()}@kline_${k_interval}`;
+                    if (channels.current[klineChannel]) {
+                        channels.current[klineChannel](data);
+                    }
                 }
             }
 
-            // All Market Mini Tickers Stream
-            if (eventType == '24hrMiniTicker') {
-                let channelName = eventType; // '24hrMiniTicker
-
-                if (channels.current[channelName]) {
-                    channels.current[channelName](data);
-                }
+            if (!('e' in data)) {
+                // sub / unsub / list subscription message
+                return;
             }
         };
 

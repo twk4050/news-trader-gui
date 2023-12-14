@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Autocomplete, TextField, Typography, Stack, InputAdornment, Button } from '@mui/material';
 
 import { BuyButton, SellButton } from './styles/StyledComponent123';
 
-import { BinanceUtils, GLOBAL_API } from './utils';
+import { BinanceUtils, GLOBAL_API, commonUtils } from './utils';
+import { BinanceWSContext } from './providers';
 
 function OrderComponent({ symbol, price, filterInfo }) {
     // price: <number>
@@ -120,13 +121,7 @@ function OrderComponent({ symbol, price, filterInfo }) {
 }
 
 export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
-    // const symbols = ['BTCUSDT', 'ETHUSDT', 'TRBUSDT', '1000FLOKIUSDT', 'TUSDT'];
-    // const symbols = Object.keys(symbolsFilterInfo);
-    // const [currentSymbol, setCurrentSymbol] = useState(symbols[0]);
-    // const filterInfo = symbolsFilterInfo[currentSymbol];
-    // function handleOnChangeSymbol(e, symbol) {
-    //     setCurrentSymbol(symbol);
-    // }
+    const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
 
     const filterInfo = symbolsFilterInfo[symbol];
     const currentSymbol = symbol;
@@ -140,10 +135,40 @@ export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
         }));
     }
 
-    // init websocket
+    // reference ChartContainer.js on handling ws connection
     useEffect(() => {
-        BinanceUtils.initBinancePriceStream(handleAllCoinPrice);
-    }, []);
+        if (!isOpen) {
+            return;
+        }
+
+        const streamName = `!miniTicker@arr`;
+        const randomNumber = commonUtils.generateRandomNumber();
+        console.log(`sending ${streamName} to binance ws to subscribe`);
+
+        let subTopic = BinanceUtils.generateSubscribeTopicJson(streamName, randomNumber);
+        wsSendMsg(subTopic);
+
+        // FIXME: should cb know how to parse ws json data or just pass 'handleAllCoinPrice' fn only
+        const cb = (data) => {
+            const newPriceData = {};
+            for (let symbolData of data) {
+                let symbol = symbolData.s;
+                let lastPrice = symbolData.c;
+                newPriceData[symbol] = lastPrice;
+            }
+
+            handleAllCoinPrice(newPriceData);
+        };
+
+        subscribeToStreamName(streamName, cb);
+
+        return () => {
+            console.log(`sending ${streamName} to binance ws to unsubscribe`);
+            let unsubTopic = BinanceUtils.generateUnsubscribeTopicJson(streamName, randomNumber);
+            wsSendMsg(unsubTopic);
+            unsubscribe(streamName, cb);
+        };
+    }, [isOpen]);
 
     return (
         <Stack
@@ -155,25 +180,6 @@ export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
         >
             {allCoinPrice[currentSymbol] ? (
                 <>
-                    {/* <Autocomplete
-                        options={symbols}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                size="small"
-                                variant="standard"
-                                InputProps={{
-                                    ...params.InputProps,
-                                    style: { fontSize: '14px', fontFamily: 'Helvetica' },
-                                }}
-                            />
-                        )}
-                        value={currentSymbol}
-                        onChange={handleOnChangeSymbol}
-                        autoHighlight
-                        disableClearable
-                    ></Autocomplete> */}
-
                     <OrderComponent
                         symbol={currentSymbol}
                         price={+allCoinPrice[currentSymbol]}
