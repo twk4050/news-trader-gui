@@ -5,7 +5,7 @@ import { Autocomplete, Box, Checkbox, FormControlLabel, Stack, TextField } from 
 import moment from 'moment';
 
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
-import { chartUtils, BinanceUtils } from './utils';
+import { chartUtils, BinanceUtils, commonUtils } from './utils';
 
 import { BinanceWSContext } from './providers';
 
@@ -398,16 +398,12 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
         }
 
         const streamName = `${symbol.toLowerCase()}@kline_${interval}`; // binance calls it streamName
-        const randomNumber = generateRandomNumber();
+        const randomNumber = commonUtils.generateRandomNumber();
 
-        let subscribeBinanceTopic = {
-            method: 'SUBSCRIBE',
-            params: [streamName],
-            id: randomNumber,
-        };
+        let subTopic = BinanceUtils.generateSubscribeTopicJson(streamName, randomNumber);
 
         console.log(`sending ${streamName} to binance ws to subscribe`);
-        wsSendMsg(JSON.stringify(subscribeBinanceTopic));
+        wsSendMsg(subTopic);
 
         const cb = (data) => {
             let parsedKlineData = chartUtils.mapWSKlineData(data);
@@ -418,12 +414,8 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
         // teardown
         return () => {
             console.log(`sending ${streamName} to binance ws to unsubscribe`);
-            let unsubscribeBinanceTopic = {
-                method: 'UNSUBSCRIBE',
-                params: [streamName],
-                id: randomNumber,
-            };
-            wsSendMsg(JSON.stringify(unsubscribeBinanceTopic));
+            let unsubTopic = BinanceUtils.generateUnsubscribeTopicJson(streamName, randomNumber);
+            wsSendMsg(unsubTopic);
             unsubscribe(streamName, cb);
         };
     }, [isOpen]);
@@ -632,11 +624,6 @@ export default function ChartContainer({
 }
 
 // FIXME: hacks
-
-function generateRandomNumber() {
-    // return random int 0 - 99
-    return Math.floor(Math.random() * 100);
-}
 
 function mapOIHistData(oiHist) {
     // for /futures/data/openInterestHist

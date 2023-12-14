@@ -103,6 +103,25 @@ function getPrecisionForToFixed(tickSize) {
     return precision;
 }
 
+function generateSubscribeTopicJson(streamName, id) {
+    let subscribeTopic = {
+        method: 'SUBSCRIBE',
+        params: [streamName],
+        id: id,
+    };
+
+    return JSON.stringify(subscribeTopic);
+}
+
+function generateUnsubscribeTopicJson(streamName, id) {
+    let unsubscribeTopic = {
+        method: 'UNSUBSCRIBE',
+        params: [streamName],
+        id: id,
+    };
+    return JSON.stringify(unsubscribeTopic);
+}
+
 // NewsContainer
 // for newsCard epoch time to readable time
 function get_formatted_date(epoch_ms) {
@@ -270,6 +289,12 @@ function mapDataForVolumeHistogram(kline) {
     };
 }
 
+// common utils
+function generateRandomNumber() {
+    // return random int 0 - 99
+    return Math.floor(Math.random() * 100);
+}
+
 const newsUtils = {
     // get_formatted_date, // only used in parse_news
     // parse_news, // only used in initTreeWS // not needed to export
@@ -292,6 +317,12 @@ const BinanceUtils = {
     round_step_size,
     initBinancePriceStream,
     getPrecisionForToFixed,
+    generateSubscribeTopicJson,
+    generateUnsubscribeTopicJson,
 };
 
-export { GLOBAL_API, newsUtils, chartUtils, BinanceUtils };
+const commonUtils = {
+    generateRandomNumber,
+};
+
+export { GLOBAL_API, newsUtils, chartUtils, BinanceUtils, commonUtils };

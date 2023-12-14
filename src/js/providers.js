@@ -61,14 +61,28 @@ export const BinanceWebSocketProvider = ({ children }) => {
                 return;
             }
 
-            // data message
-            let k = data.k;
-            let k_symbol = k.s;
-            let k_interval = k.i;
+            let eventType = data.e;
 
-            const klineChannel = `${k_symbol.toLowerCase()}@kline_${k_interval}`;
-            if (channels.current[klineChannel]) {
-                channels.current[klineChannel](data);
+            // kline Streams
+            if (eventType == 'kline') {
+                // data message
+                let k = data.k;
+                let k_symbol = k.s;
+                let k_interval = k.i;
+
+                const klineChannel = `${k_symbol.toLowerCase()}@kline_${k_interval}`;
+                if (channels.current[klineChannel]) {
+                    channels.current[klineChannel](data);
+                }
+            }
+
+            // All Market Mini Tickers Stream
+            if (eventType == '24hrMiniTicker') {
+                let channelName = eventType; // '24hrMiniTicker
+
+                if (channels.current[channelName]) {
+                    channels.current[channelName](data);
+                }
             }
         };
 
