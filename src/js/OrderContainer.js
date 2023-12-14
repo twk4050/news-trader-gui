@@ -4,7 +4,7 @@ import { Autocomplete, TextField, Typography, Stack, InputAdornment, Button } fr
 import { BuyButton, SellButton } from './styles/StyledComponent123';
 
 import { BinanceUtils, GLOBAL_API, commonUtils } from './utils';
-import { BinanceWSContext } from './providers';
+import { BinanceContext, BinanceWSContext } from './providers';
 
 function OrderComponent({ symbol, price, filterInfo }) {
     // price: <number>
@@ -120,27 +120,24 @@ function OrderComponent({ symbol, price, filterInfo }) {
     );
 }
 
-export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
-    const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
+export default function OrderContainer({ symbol, sxProps }) {
+    const [, symbolsFilterInfo, ,] = useContext(BinanceContext);
+    const [, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
+
+    const [exchangeCoinPrice, setExchangeCoinPrice] = useState({});
 
     const filterInfo = symbolsFilterInfo[symbol];
-    const currentSymbol = symbol;
 
-    const [allCoinPrice, setAllCoinPrice] = useState({});
-    function handleAllCoinPrice(newAllCoinPriceData) {
+    function handleExchangeCoinPrice(newExchangePrice) {
         // console.log(newAllCoinPriceData);
-        setAllCoinPrice((oldAllCoinPrice) => ({
-            ...oldAllCoinPrice,
-            ...newAllCoinPriceData,
+        setExchangeCoinPrice((oldExchangePrice) => ({
+            ...oldExchangePrice,
+            ...newExchangePrice,
         }));
     }
 
     // reference ChartContainer.js on handling ws connection
     useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
-
         const streamName = `!miniTicker@arr`;
         const randomNumber = commonUtils.generateRandomNumber();
         console.log(`sending ${streamName} to binance ws to subscribe`);
@@ -157,7 +154,7 @@ export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
                 newPriceData[symbol] = lastPrice;
             }
 
-            handleAllCoinPrice(newPriceData);
+            handleExchangeCoinPrice(newPriceData);
         };
 
         subscribeToStreamName(streamName, cb);
@@ -168,7 +165,7 @@ export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
             wsSendMsg(unsubTopic);
             unsubscribe(streamName, cb);
         };
-    }, [isOpen]);
+    }, []);
 
     return (
         <Stack
@@ -178,11 +175,11 @@ export default function OrderContainer({ symbol, symbolsFilterInfo, sxProps }) {
                 ...sxProps,
             }}
         >
-            {allCoinPrice[currentSymbol] ? (
+            {exchangeCoinPrice[symbol] ? (
                 <>
                     <OrderComponent
-                        symbol={currentSymbol}
-                        price={+allCoinPrice[currentSymbol]}
+                        symbol={symbol}
+                        price={+exchangeCoinPrice[symbol]}
                         filterInfo={filterInfo}
                     />
                 </>

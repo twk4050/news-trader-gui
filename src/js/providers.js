@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useContext, createContext } from 'react';
+import { BinanceUtils } from './utils';
 
 export const BinanceWSContext = createContext();
 
@@ -144,3 +145,18 @@ UseContext CreateContext BinanceWebSocketProvider superior
 
 //     return <div style={{ color: 'yellow' }}>hello world from BTC_CHART</div>;
 // });
+
+export const BinanceContext = createContext();
+export const BinanceProvider = ({ children }) => {
+    const [symbolsFilterInfo, setSymbolsFilterInfo] = useState(null);
+    const kline_intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w', '5m'];
+
+    useEffect(() => {
+        BinanceUtils.get_symbols_filter_info(setSymbolsFilterInfo);
+    }, []);
+
+    let symbols = symbolsFilterInfo ? Object.keys(symbolsFilterInfo) : null;
+
+    const ret = [symbols, symbolsFilterInfo, kline_intervals];
+    return <BinanceContext.Provider value={ret}>{children}</BinanceContext.Provider>;
+};

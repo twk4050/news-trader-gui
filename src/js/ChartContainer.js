@@ -7,7 +7,7 @@ import moment from 'moment';
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
 import { chartUtils, BinanceUtils, commonUtils } from './utils';
 
-import { BinanceWSContext } from './providers';
+import { BinanceContext, BinanceWSContext } from './providers';
 
 // interface SeriesOptionCommon n LineStyleOptions
 // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/SeriesOptionsCommon
@@ -40,7 +40,7 @@ const MA50_Options = {
 
 const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
 
-function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
+function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
     const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
 
     // [{open, high, low, close, time}, {open, high ...}]
@@ -65,7 +65,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
     useEffect(() => {
         console.log('plotting chart', symbol, interval);
 
-        const tickSize = symbolsFilterInfo[symbol]['tickSize'];
+        const tickSize = symbolFilterInfo['tickSize'];
 
         const precision = BinanceUtils.getPrecisionForToFixed(tickSize);
         const minMove = tickSize; // parseFloat(tickSize); // 0.00001
@@ -454,24 +454,22 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolsFilterInfo }) {
 
 export default function ChartContainer({
     sxProps,
-    symbolsFilterInfo,
     setOrderSymbol, // from parent
     symbol = 'BTCUSDT',
     interval = '1h',
 }) {
-    // const symbols = ['BTCUSDT', 'ETHUSDT', 'LINKUSDT', 'TRBUSDT', 'SOLUSDT', '1000PEPEUSDT'];
-    const symbols = Object.keys(symbolsFilterInfo); // return array of obj keys
-    const intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w', '5m'];
-    const [currentSymbol, setCurrentSymbol] = useState(symbol);
+    const [symbols, symbolsFilterInfo, kline_intervals] = useContext(BinanceContext);
+
     const chartContainerRef = useRef(null);
 
+    const [currentSymbol, setCurrentSymbol] = useState(symbol);
     const [currentInterval, setCurrentInterval] = useState(interval);
     const [klineData, setKlineData] = useState([]);
     const [oiHistData, setOIHistData] = useState([]);
     const [showOI, setShowOI] = useState(false);
 
-    // oi_hist_endpoint params interval 5m 15m 30m 1h 2h 4h 6h 12h 1d
-    const oiHistIntervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d'];
+    const symbolFilterInfo = symbolsFilterInfo[symbol];
+    const oiHistIntervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d']; // oi_hist_endpoint params from binance
     const validOIInterval = oiHistIntervalOptions.includes(currentInterval); // boolean
 
     function handleOnChangeSymbol(event, newSymbol) {
@@ -575,7 +573,7 @@ export default function ChartContainer({
                     }}
                 ></Autocomplete>
 
-                {intervals.map((interval, i) =>
+                {kline_intervals.map((interval, i) =>
                     interval == currentInterval ? (
                         <SelectedIntervalButton
                             key={i}
@@ -607,7 +605,7 @@ export default function ChartContainer({
                           interval={currentInterval}
                           klineData={klineData}
                           oiHistData={oiHistData}
-                          symbolsFilterInfo={symbolsFilterInfo}
+                          symbolFilterInfo={symbolFilterInfo}
                       />
                   )
                 : klineData.length != 0 && (
@@ -616,7 +614,7 @@ export default function ChartContainer({
                           interval={currentInterval}
                           klineData={klineData}
                           oiHistData={[]}
-                          symbolsFilterInfo={symbolsFilterInfo}
+                          symbolFilterInfo={symbolFilterInfo}
                       />
                   )}
         </Box>

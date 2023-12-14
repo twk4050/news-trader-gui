@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('API123', {
         // v5.1 change hotcoins
         // v6 change websocket connections. 1 ws connection to handle multi charts data. * React.useContext .createContext
         // v6.1 change wsPriceStream to same connection as kline ws
-        version: 'v6.1',
+        // v6.2 code refactor. created BinanceContext / BinanceProvider to provide symbols , symbolsFilterInfo
+        version: 'v6.2',
     },
 });
