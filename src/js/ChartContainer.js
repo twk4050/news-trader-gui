@@ -65,10 +65,26 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
     useEffect(() => {
         console.log('plotting chart', symbol, interval);
 
+        // 1000SATSUSDT symbolFilterInfo
+        // {
+        //     "pricePrecision": 6,
+        //     "maxPrice": "2000",
+        //     "minPrice": "0.001000",
+        //     "tickSize": "0 . 001000",
+        //     "maxQty": "1000000",
+        //     "minQty": "0.1",
+        //     "stepSize": "0.1"
+        // }
         const tickSize = symbolFilterInfo['tickSize'];
 
         const precision = BinanceUtils.getPrecisionForToFixed(tickSize);
         const minMove = tickSize; // parseFloat(tickSize); // 0.00001
+
+        if (symbol === '1000SATSUSDT') {
+            console.log(symbol, symbolFilterInfo);
+            console.log('precision', precision);
+            console.log('minmove', minMove);
+        }
 
         const chartOptions = {
             // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/ChartOptionsImpl
@@ -468,7 +484,7 @@ export default function ChartContainer({
     const [oiHistData, setOIHistData] = useState([]);
     const [showOI, setShowOI] = useState(false);
 
-    const symbolFilterInfo = symbolsFilterInfo[symbol];
+    const symbolFilterInfo = symbolsFilterInfo[currentSymbol];
     const oiHistIntervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d']; // oi_hist_endpoint params from binance
     const validOIInterval = oiHistIntervalOptions.includes(currentInterval); // boolean
 
