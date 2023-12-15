@@ -302,27 +302,112 @@ const newsUtils = {
     generateMockNewsFeed,
 };
 
-const chartUtils = {
+const BinanceUtils = {
+    get_symbols_filter_info,
     craft_binance_kline_end_point,
     craft_binance_oi_hist_endpoint,
+
     mapHTTPKlineData,
     mapWSKlineData,
     mapDataForVolumeHistogram,
-};
 
-const BinanceUtils = {
-    get_symbols_filter_info,
-    // craft_binance_perp_order_url,
-    // send_binance_limit_order,
-    round_step_size,
     initBinancePriceStream,
-    getPrecisionForToFixed,
     generateSubscribeTopicJson,
     generateUnsubscribeTopicJson,
 };
 
-const commonUtils = {
-    generateRandomNumber,
+function bybit_get_instruments_info(cb) {
+    // only get LinearPerpetual and USDT perps.
+    // no ETCPERP or ETH-15DEC23
+    const url = 'https://api.bybit.com' + '/v5/market/instruments-info';
+    // ?category=linear
+    // ?category=linear&symbol=BTCUSDT&limit=10
+
+    const params = {
+        category: 'linear',
+    };
+
+    let paramString = qs.stringify(params);
+    const endpoint = url + '?' + paramString;
+
+    const fetch_options = {
+        method: 'GET',
+    };
+
+    fetch(endpoint, fetch_options)
+        .then((res) => res.json())
+        .then((data) => {
+            const filteredSymbolsInfo = {}; // var name taken from binance api
+
+            let symbolsInfo = data.result.list;
+            symbolsInfo.forEach((s) => {
+                let symbolName = s.symbol;
+                let contractType = s.contractType;
+                let quoteCoin = s.quoteCoin;
+
+                let symbolObj = {
+                    maxPrice: s.priceFilter.maxPrice,
+                    minPrice: s.priceFilter.minPrice,
+                    tickSize: s.priceFilter.tickSize,
+                    maxQty: s.lotSizeFilter.maxOrderQty,
+                    minQty: s.lotSizeFilter.minOrderQty,
+                    stepSize: s.lotSizeFilter.qtyStep,
+                };
+
+                if (contractType !== 'LinearPerpetual' || quoteCoin !== 'USDT') {
+                    return;
+                }
+                // all bybit linear perps are trading
+                filteredSymbolsInfo[symbolName] = symbolObj;
+            });
+
+            cb(filteredSymbolsInfo);
+        });
+}
+
+function craft_bybit_kline_end_point(symbol, interval) {
+    // interval 1 3 5 15 30 60 120 240 360 720 D M W
+    const bybit_kline_endpoint = 'https://api.bybit.com' + '/v5/market/kline';
+
+    const params = {
+        category: 'linear',
+        symbol: symbol,
+        interval: interval,
+        limit: 500,
+    };
+
+    let paramString = qs.stringify(params);
+
+    return bybit_kline_endpoint + '?' + paramString;
+}
+
+function mapKlineData123(kline) {
+    return {
+        time: kline[0] / 1000,
+        open: +kline[1],
+        high: +kline[2],
+        low: +kline[3],
+        close: +kline[4],
+        volume: +kline[6], // turnover in quotecoin usdt
+    };
+}
+
+function mapWSKlineData123(kline) {
+    // FIXME:
+    // https://bybit-exchange.github.io/docs/v5/websocket/public/kline
+}
+
+const BybitUtils = {
+    bybit_get_instruments_info,
+    craft_bybit_kline_end_point,
+    mapKlineData123,
+    mapWSKlineData123,
 };
 
-export { GLOBAL_API, newsUtils, chartUtils, BinanceUtils, commonUtils };
+const commonUtils = {
+    generateRandomNumber,
+    round_step_size,
+    getPrecisionForToFixed,
+};
+
+export { GLOBAL_API, newsUtils, BinanceUtils, commonUtils, BybitUtils };

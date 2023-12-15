@@ -12,7 +12,7 @@ function OrderComponent({ symbol, price, filterInfo }) {
     const order_nvs = [1500, 6000, 17000]; // order notional value, use to map BuyButton n SellButtons
 
     const symbol_tick_size = filterInfo.tickSize;
-    const precision = BinanceUtils.getPrecisionForToFixed(symbol_tick_size); //filterInfo.pricePrecision;
+    const precision = commonUtils.getPrecisionForToFixed(symbol_tick_size); //filterInfo.pricePrecision;
 
     const [spread, setSpread] = useState(initialSpread); // typeof spread => Number, always a float
     const [bidPrice, askPrice] = calculateBidAskPrice(price, spread);
@@ -30,8 +30,8 @@ function OrderComponent({ symbol, price, filterInfo }) {
         let rawBidPrice = price * (1 - spread / 100);
         let rawAskPrice = price * (1 + spread / 100);
 
-        let newBidPrice = BinanceUtils.round_step_size(rawBidPrice, symbol_tick_size);
-        let newAskPrice = BinanceUtils.round_step_size(rawAskPrice, symbol_tick_size);
+        let newBidPrice = commonUtils.round_step_size(rawBidPrice, symbol_tick_size);
+        let newAskPrice = commonUtils.round_step_size(rawAskPrice, symbol_tick_size);
 
         return [newBidPrice, newAskPrice];
     }
@@ -40,7 +40,7 @@ function OrderComponent({ symbol, price, filterInfo }) {
         const symbol_step_size = filterInfo.stepSize;
         function order(symbol, side, nv) {
             let order_price = side === 'BUY' ? bidPrice : askPrice;
-            let order_quantity = BinanceUtils.round_step_size(nv / order_price, symbol_step_size);
+            let order_quantity = commonUtils.round_step_size(nv / order_price, symbol_step_size);
 
             const params = {
                 symbol: symbol,

@@ -7,7 +7,7 @@ import { Masonry } from '@mui/lab';
 import ChartContainer from './ChartContainer';
 import NewsContainer from './NewsContainer';
 import OrderContainer from './OrderContainer';
-import { BinanceUtils } from './utils';
+import { BinanceUtils, BybitUtils } from './utils';
 
 import { BinanceContext, BinanceWSContext } from './providers';
 
@@ -35,6 +35,11 @@ export default function App() {
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
     const hotCoins = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'INJUSDT'];
+
+    useEffect(() => {
+        BinanceUtils.get_symbols_filter_info(console.log);
+        BybitUtils.bybit_get_instruments_info(console.log);
+    }, []);
 
     // width = 2 chart 536 x2 + news 320 ~ 1400px
     const sxPropsChartContainer = {};

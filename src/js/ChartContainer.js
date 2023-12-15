@@ -5,7 +5,7 @@ import { Autocomplete, Box, Checkbox, FormControlLabel, Stack, TextField } from 
 import moment from 'moment';
 
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
-import { chartUtils, BinanceUtils, commonUtils } from './utils';
+import { BinanceUtils, commonUtils } from './utils';
 
 import { BinanceContext, BinanceWSContext } from './providers';
 
@@ -77,7 +77,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
         // }
         const tickSize = symbolFilterInfo['tickSize'];
 
-        const precision = BinanceUtils.getPrecisionForToFixed(tickSize);
+        const precision = commonUtils.getPrecisionForToFixed(tickSize);
         const minMove = tickSize; // parseFloat(tickSize); // 0.00001
 
         if (symbol === '1000SATSUSDT') {
@@ -203,7 +203,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
             },
         });
 
-        let volData = klineData.map(chartUtils.mapDataForVolumeHistogram);
+        let volData = klineData.map(BinanceUtils.mapDataForVolumeHistogram);
 
         // for oi histogram bars
         let oiSeries;
@@ -406,7 +406,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
         2. wsProvider channels is a mapping of channel_name to callbackfn. eg 'btcusdt@kline_1h' -> updateKlineCharts func
         - use 'subscribeToStreamName' and 'unsubscribe' to add func to streamName
         - channel_name = {symbol}@kline_{interval} // symbol lowerCase
-        - callback_fn = from e.data json, chartUtils.mapWSKLineData and setNewData
+        - callback_fn = from e.data json, .mapWSKLineData and setNewData
         3. teardown fn = send msg to websocket to unsubscribe, del callback fn from wsProvider
         */
         if (!isOpen) {
@@ -422,7 +422,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
         wsSendMsg(subTopic);
 
         const cb = (data) => {
-            let parsedKlineData = chartUtils.mapWSKlineData(data);
+            let parsedKlineData = BinanceUtils.mapWSKlineData(data);
             setNewDataFromWS(parsedKlineData);
         };
         subscribeToStreamName(streamName, cb);
@@ -441,7 +441,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
         if (newDataFromWS) {
             // newDataFromWS from utils.mapWSKlineData, type {time, open, high ..., volume}
             // newVolData type {time, value}
-            let newVolData = chartUtils.mapDataForVolumeHistogram(newDataFromWS);
+            let newVolData = BinanceUtils.mapDataForVolumeHistogram(newDataFromWS);
 
             klineSeriesDrawer.update(newDataFromWS);
             volSeriesDrawer.update(newVolData);
@@ -503,7 +503,7 @@ export default function ChartContainer({
         return changeInterval(interval);
     }
     useEffect(() => {
-        const kline_end_point = chartUtils.craft_binance_kline_end_point(
+        const kline_end_point = BinanceUtils.craft_binance_kline_end_point(
             currentSymbol,
             currentInterval
         );
@@ -515,12 +515,12 @@ export default function ChartContainer({
         fetch(kline_end_point, fetch_options)
             .then((res) => res.json())
             .then((data) => {
-                let parsedData = data.map(chartUtils.mapHTTPKlineData);
+                let parsedData = data.map(BinanceUtils.mapHTTPKlineData);
                 setKlineData(parsedData);
             });
 
         if (showOI && validOIInterval) {
-            const oi_hist_endpoint = chartUtils.craft_binance_oi_hist_endpoint(
+            const oi_hist_endpoint = BinanceUtils.craft_binance_oi_hist_endpoint(
                 currentSymbol,
                 currentInterval
             );
