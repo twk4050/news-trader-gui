@@ -66,7 +66,8 @@ export default function App() {
                     display: 'flex',
                 }}
             >
-                {symbolsFilterInfo && isOpen ? (
+                {/* FIXME: symbolsFilterInfo && isOpen ? or let Components that require ws use wsContext to check isOpen */}
+                {symbolsFilterInfo ? (
                     <>
                         <Grid
                             container

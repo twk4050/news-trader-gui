@@ -122,7 +122,7 @@ function OrderComponent({ symbol, price, filterInfo }) {
 
 export default function OrderContainer({ symbol, sxProps }) {
     const [, symbolsFilterInfo, ,] = useContext(BinanceContext);
-    const [, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
+    const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
 
     const [exchangeCoinPrice, setExchangeCoinPrice] = useState({});
 
@@ -138,6 +138,10 @@ export default function OrderContainer({ symbol, sxProps }) {
 
     // reference ChartContainer.js on handling ws connection
     useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
         const streamName = `!miniTicker@arr`;
         const randomNumber = commonUtils.generateRandomNumber();
         console.log(`sending ${streamName} to binance ws to subscribe`);
@@ -165,7 +169,7 @@ export default function OrderContainer({ symbol, sxProps }) {
             wsSendMsg(unsubTopic);
             unsubscribe(streamName, cb);
         };
-    }, []);
+    }, [isOpen]);
 
     return (
         <Stack
