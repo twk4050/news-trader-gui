@@ -422,7 +422,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
         wsSendMsg(subTopic);
 
         const cb = (data) => {
-            let parsedKlineData = BinanceUtils.mapWSKlineData(data);
+            let parsedKlineData = BinanceUtils.mapBinanceWSKlineData(data);
             setNewDataFromWS(parsedKlineData);
         };
         subscribeToStreamName(streamName, cb);
@@ -515,7 +515,7 @@ export default function ChartContainer({
         fetch(kline_end_point, fetch_options)
             .then((res) => res.json())
             .then((data) => {
-                let parsedData = data.map(BinanceUtils.mapHTTPKlineData);
+                let parsedData = data.map(BinanceUtils.mapBinanceKlineData);
                 setKlineData(parsedData);
             });
 

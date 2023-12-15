@@ -5,123 +5,6 @@ import qs from 'qs';
 // General
 const GLOBAL_API = API123; // for nodejs functions electronjs contextBridge
 
-// Binance
-function get_symbols_filter_info(cb) {
-    const url = 'https://fapi.binance.com' + '/fapi/v1/exchangeInfo';
-    const fetch_options = {
-        method: 'GET',
-    };
-
-    // filteredSymbolsInfo = {BTCUSDT: {stepSize: 100, tickSize: 999}, ETHUSDT: {...}}
-    fetch(url, fetch_options)
-        .then((res) => res.json())
-        .then((data) => {
-            let symbolsInfo = data.symbols;
-
-            const filteredSymbolsInfo = {};
-
-            symbolsInfo.forEach((s) => {
-                let symbolName = s.symbol;
-                let symbolObj = {
-                    pricePrecision: s.pricePrecision,
-                    maxPrice: s.filters[0].maxPrice,
-                    minPrice: s.filters[0].minPrice,
-                    tickSize: s.filters[0].tickSize,
-                    maxQty: s.filters[1].maxQty,
-                    minQty: s.filters[1].minQty,
-                    stepSize: s.filters[1].stepSize,
-                };
-
-                if (s.status !== 'TRADING' || s.contractType !== 'PERPETUAL') {
-                    return;
-                } else {
-                    filteredSymbolsInfo[symbolName] = symbolObj;
-                }
-            });
-            cb(filteredSymbolsInfo);
-        });
-}
-
-function round_step_size(value, tickSize) {
-    // price/qty should be within 9dp, else returns scientific notation e-7
-    let bigValue = Big(value);
-    let bigTick = Big(tickSize);
-
-    let bigRemainder = bigValue.mod(bigTick);
-    let roundedValue = bigValue.minus(bigRemainder);
-
-    return roundedValue.toNumber();
-}
-
-function initBinancePriceStream(cb) {
-    // binance server send ping every 3min, if within 10min no reply, connection ded
-    const url = 'wss://fstream.binance.com/ws/!miniTicker@arr';
-    const ws = new WebSocket(url);
-
-    console.log(`attempting to connect: ${url}`);
-
-    ws.onopen = () => console.log(`connection opened: ${url}`);
-    ws.onclose = () => {
-        console.log(`connection closed: ${url}`);
-        initBinancePriceStream();
-    };
-
-    ws.onmessage = (event) => {
-        let data = JSON.parse(event.data);
-
-        const newPriceData = {};
-        for (let symbolData of data) {
-            let symbol = symbolData.s;
-            let last_price = symbolData.c;
-            newPriceData[symbol] = last_price;
-        }
-
-        cb(newPriceData);
-    };
-}
-
-function getPrecisionForToFixed(tickSize) {
-    /**
-    reason for this function is becos tickSize / pricePrecision given by binance exchangeInfo make no sense "0.0000100"
-    tickSize also determines pricePrecision of symbol, pricePrecision = how many dp should symbol have
-    eg; 1000FLOKI "tickSize": "0.0000100" but "pricePrecision": 7,
-    precision imo should be 5 as tickSize is 0.00001
-
-     */
-
-    // only YFI has tickSize: "1"
-    if (tickSize === '1') {
-        return 1;
-    }
-
-    const re_getLeadingZeroes = /0*[1-9]/;
-
-    let decimal = tickSize.split('.')[1]; //    "0000100"
-    let decimalWithoutRedundantZero = decimal.match(re_getLeadingZeroes)[0]; // "00001"
-
-    let precision = decimalWithoutRedundantZero.length;
-    return precision;
-}
-
-function generateSubscribeTopicJson(streamName, id) {
-    let subscribeTopic = {
-        method: 'SUBSCRIBE',
-        params: [streamName],
-        id: id,
-    };
-
-    return JSON.stringify(subscribeTopic);
-}
-
-function generateUnsubscribeTopicJson(streamName, id) {
-    let unsubscribeTopic = {
-        method: 'UNSUBSCRIBE',
-        params: [streamName],
-        id: id,
-    };
-    return JSON.stringify(unsubscribeTopic);
-}
-
 // NewsContainer
 // for newsCard epoch time to readable time
 function get_formatted_date(epoch_ms) {
@@ -130,6 +13,7 @@ function get_formatted_date(epoch_ms) {
 }
 
 const REGEX_FOR_TWITTER_QUOTE = /Quote \[[\s\S]*/;
+
 function parse_news(news) {
     // should return obj with 6 props { title, body, link, coins, time, SOURCE}
     let title = news.title;
@@ -201,6 +85,7 @@ function initTreeWS(cb) {
         }
     };
 }
+
 const news2 = {
     title: 'Binance Futures Will Launch USDⓈ-M MEME Perpetual Contract With Up to 50x Leverage',
     body: '',
@@ -227,7 +112,90 @@ const capoNews = {
 };
 const generateMockNewsFeed = () => [capoNews, news2, news4];
 
-// for Charting
+function addQueryParams(endpoint, params) {
+    let paramString = qs.stringify(params);
+
+    return endpoint + '?' + paramString;
+}
+
+// common Utils
+function round_step_size(value, tickSize) {
+    // price/qty should be within 9dp, else returns scientific notation e-7
+    let bigValue = Big(value);
+    let bigTick = Big(tickSize);
+
+    let bigRemainder = bigValue.mod(bigTick);
+    let roundedValue = bigValue.minus(bigRemainder);
+
+    return roundedValue.toNumber();
+}
+
+function getPrecisionForToFixed(tickSize) {
+    /**
+    reason for this function is becos tickSize / pricePrecision given by binance exchangeInfo make no sense "0.0000100"
+    tickSize also determines pricePrecision of symbol, pricePrecision = how many dp should symbol have
+    eg; 1000FLOKI "tickSize": "0.0000100" but "pricePrecision": 7,
+    precision imo should be 5 as tickSize is 0.00001
+
+     */
+
+    // only YFI has tickSize: "1"
+    if (tickSize === '1') {
+        return 1;
+    }
+
+    const re_getLeadingZeroes = /0*[1-9]/;
+
+    let decimal = tickSize.split('.')[1]; //    "0000100"
+    let decimalWithoutRedundantZero = decimal.match(re_getLeadingZeroes)[0]; // "00001"
+
+    let precision = decimalWithoutRedundantZero.length;
+    return precision;
+}
+
+// common utils
+function generateRandomNumber() {
+    // return random int 0 - 99
+    return Math.floor(Math.random() * 100);
+}
+
+// Binance
+function get_symbols_filter_info(cb) {
+    const url = 'https://fapi.binance.com' + '/fapi/v1/exchangeInfo';
+    const fetch_options = {
+        method: 'GET',
+    };
+
+    // filteredSymbolsInfo = {BTCUSDT: {stepSize: 100, tickSize: 999}, ETHUSDT: {...}}
+    fetch(url, fetch_options)
+        .then((res) => res.json())
+        .then((data) => {
+            let symbolsInfo = data.symbols;
+
+            const filteredSymbolsInfo = {};
+
+            symbolsInfo.forEach((s) => {
+                let symbolName = s.symbol;
+                let symbolObj = {
+                    pricePrecision: s.pricePrecision,
+                    maxPrice: s.filters[0].maxPrice,
+                    minPrice: s.filters[0].minPrice,
+                    tickSize: s.filters[0].tickSize,
+                    maxQty: s.filters[1].maxQty,
+                    minQty: s.filters[1].minQty,
+                    stepSize: s.filters[1].stepSize,
+                };
+
+                if (s.status !== 'TRADING' || s.contractType !== 'PERPETUAL') {
+                    return;
+                } else {
+                    filteredSymbolsInfo[symbolName] = symbolObj;
+                }
+            });
+            cb(filteredSymbolsInfo);
+        });
+}
+
 function craft_binance_kline_end_point(symbol, interval) {
     const binance_kline_endpoint = 'https://fapi.binance.com' + '/fapi/v1/klines';
 
@@ -236,9 +204,7 @@ function craft_binance_kline_end_point(symbol, interval) {
         interval: interval,
     };
 
-    let paramString = qs.stringify(params);
-
-    return binance_kline_endpoint + '?' + paramString;
+    return addQueryParams(binance_kline_endpoint, params);
 }
 
 function craft_binance_oi_hist_endpoint(symbol, interval) {
@@ -251,11 +217,10 @@ function craft_binance_oi_hist_endpoint(symbol, interval) {
         limit: 500,
     };
 
-    let paramString = qs.stringify(params);
-    return binance_oi_hist_endpoint + '?' + paramString;
+    return addQueryParams(binance_oi_hist_endpoint, params);
 }
 
-function mapHTTPKlineData(kline) {
+function mapBinanceKlineData(kline) {
     return {
         time: kline[0] / 1000,
         open: +kline[1],
@@ -266,7 +231,7 @@ function mapHTTPKlineData(kline) {
     };
 }
 
-function mapWSKlineData(data) {
+function mapBinanceWSKlineData(data) {
     let e = data.E; // event time.
     let kline = data.k;
     return {
@@ -289,10 +254,50 @@ function mapDataForVolumeHistogram(kline) {
     };
 }
 
-// common utils
-function generateRandomNumber() {
-    // return random int 0 - 99
-    return Math.floor(Math.random() * 100);
+function initBinancePriceStream(cb) {
+    // binance server send ping every 3min, if within 10min no reply, connection ded
+    const url = 'wss://fstream.binance.com/ws/!miniTicker@arr';
+    const ws = new WebSocket(url);
+
+    console.log(`attempting to connect: ${url}`);
+
+    ws.onopen = () => console.log(`connection opened: ${url}`);
+    ws.onclose = () => {
+        console.log(`connection closed: ${url}`);
+        initBinancePriceStream();
+    };
+
+    ws.onmessage = (event) => {
+        let data = JSON.parse(event.data);
+
+        const newPriceData = {};
+        for (let symbolData of data) {
+            let symbol = symbolData.s;
+            let last_price = symbolData.c;
+            newPriceData[symbol] = last_price;
+        }
+
+        cb(newPriceData);
+    };
+}
+
+function generateSubscribeTopicJson(streamName, id) {
+    let subscribeTopic = {
+        method: 'SUBSCRIBE',
+        params: [streamName],
+        id: id,
+    };
+
+    return JSON.stringify(subscribeTopic);
+}
+
+function generateUnsubscribeTopicJson(streamName, id) {
+    let unsubscribeTopic = {
+        method: 'UNSUBSCRIBE',
+        params: [streamName],
+        id: id,
+    };
+    return JSON.stringify(unsubscribeTopic);
 }
 
 const newsUtils = {
@@ -302,13 +307,19 @@ const newsUtils = {
     generateMockNewsFeed,
 };
 
+const commonUtils = {
+    generateRandomNumber,
+    round_step_size,
+    getPrecisionForToFixed,
+};
+
 const BinanceUtils = {
     get_symbols_filter_info,
     craft_binance_kline_end_point,
     craft_binance_oi_hist_endpoint,
 
-    mapHTTPKlineData,
-    mapWSKlineData,
+    mapBinanceKlineData,
+    mapBinanceWSKlineData,
     mapDataForVolumeHistogram,
 
     initBinancePriceStream,
@@ -376,12 +387,10 @@ function craft_bybit_kline_end_point(symbol, interval) {
         limit: 500,
     };
 
-    let paramString = qs.stringify(params);
-
-    return bybit_kline_endpoint + '?' + paramString;
+    return addQueryParams(bybit_kline_endpoint, params);
 }
 
-function mapKlineData123(kline) {
+function mapBybitKlineData(kline) {
     return {
         time: kline[0] / 1000,
         open: +kline[1],
@@ -392,7 +401,7 @@ function mapKlineData123(kline) {
     };
 }
 
-function mapWSKlineData123(kline) {
+function mapBybitWSKlineData(kline) {
     // FIXME:
     // https://bybit-exchange.github.io/docs/v5/websocket/public/kline
 }
@@ -400,14 +409,8 @@ function mapWSKlineData123(kline) {
 const BybitUtils = {
     bybit_get_instruments_info,
     craft_bybit_kline_end_point,
-    mapKlineData123,
-    mapWSKlineData123,
+    mapBybitKlineData,
+    mapBybitWSKlineData,
 };
 
-const commonUtils = {
-    generateRandomNumber,
-    round_step_size,
-    getPrecisionForToFixed,
-};
-
-export { GLOBAL_API, newsUtils, BinanceUtils, commonUtils, BybitUtils };
+export { GLOBAL_API, newsUtils, commonUtils, BinanceUtils, BybitUtils };
