@@ -7,9 +7,9 @@ import { Masonry } from '@mui/lab';
 import ChartContainer from './ChartContainer';
 import NewsContainer from './NewsContainer';
 import OrderContainer from './OrderContainer';
-import { BinanceUtils, BybitUtils } from './utils';
+import { BinanceUtils, BybitUtils, commonUtils } from './utils';
 
-import { BinanceContext, BinanceWSContext } from './providers';
+import { BinanceContext, BinanceWSContext, BybitWSContext } from './providers';
 
 const theme = createTheme({
     palette: {
@@ -31,6 +31,7 @@ const theme = createTheme({
 export default function App() {
     const [symbols, symbolsFilterInfo, kline_intervals] = useContext(BinanceContext);
     const [isOpen, send, sub, unsub] = useContext(BinanceWSContext);
+    const [isOpen1, send1, sub1, unsub1] = useContext(BybitWSContext);
 
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
@@ -40,6 +41,17 @@ export default function App() {
         BinanceUtils.get_symbols_filter_info(console.log);
         BybitUtils.bybit_get_instruments_info(console.log);
     }, []);
+
+    useEffect(() => {
+        console.log('bybit context open?', isOpen1);
+        if (isOpen1) {
+            let streamName = 'kline.60.1000RATSUSDT';
+            let id = commonUtils.generateRandomNumber();
+            let topic = BybitUtils.bybitGenerateSubscribeTopicJson(streamName, id);
+
+            send1(topic);
+        }
+    }, [isOpen1]);
 
     // width = 2 chart 536 x2 + news 320 ~ 1400px
     const sxPropsChartContainer = {};

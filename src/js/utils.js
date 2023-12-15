@@ -246,11 +246,11 @@ function mapBinanceWSKlineData(data) {
 }
 
 // vol histogram
-function mapDataForVolumeHistogram(kline) {
+function mapDataForVolumeHistogram(data) {
     // kline data should be processed alr, time in seconds number type ...
     return {
-        time: kline.time,
-        value: kline.volume,
+        time: data.time,
+        value: data.volume,
     };
 }
 
@@ -401,16 +401,68 @@ function mapBybitKlineData(kline) {
     };
 }
 
-function mapBybitWSKlineData(kline) {
-    // FIXME:
+function mapBybitWSKlineData(data) {
     // https://bybit-exchange.github.io/docs/v5/websocket/public/kline
+    // {
+    //     "topic": "kline.60.1000RATSUSDT",
+    //     "data": [
+    //         {
+    //             "start": 1702641600000,
+    //             "end": 1702645199999,
+    //             "interval": "60",
+    //             "open": "0.60574",
+    //             "close": "0.5932",
+    //             "high": "0.63047",
+    //             "low": "0.59",
+    //             "volume": "12134060",
+    //             "turnover": "7419425.2331",
+    //             "confirm": false,
+    //             "timestamp": 1702642050165
+    //         }
+    //     ],
+    //     "ts": 1702642050165,
+    //     "type": "snapshot"
+    // }
+    let kline = data.data[0];
+
+    return {
+        time: kline.timestamp / 1000,
+        open: +kline.open,
+        high: +kline.high,
+        low: +kline.low,
+        close: +kline.close,
+        volume: +kline.turnover, // quote asset volume
+    };
+}
+
+function bybitGenerateSubscribeTopicJson(streamName, id) {
+    let subscribeTopic = {
+        req_id: id,
+        op: 'subscribe',
+        args: [streamName],
+    };
+
+    return JSON.stringify(subscribeTopic);
+}
+
+function bybitGenerateUnsubscribeTopicJson(streamName, id) {
+    let subscribeTopic = {
+        req_id: id,
+        op: 'unsubscribe',
+        args: [streamName],
+    };
+    return JSON.stringify(subscribeTopic);
 }
 
 const BybitUtils = {
     bybit_get_instruments_info,
     craft_bybit_kline_end_point,
+
     mapBybitKlineData,
     mapBybitWSKlineData,
+
+    bybitGenerateSubscribeTopicJson,
+    bybitGenerateUnsubscribeTopicJson,
 };
 
 export { GLOBAL_API, newsUtils, commonUtils, BinanceUtils, BybitUtils };

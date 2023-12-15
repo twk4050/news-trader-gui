@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext, createContext } from 'react';
-import { BinanceUtils } from './utils';
+import { BinanceUtils, BybitUtils } from './utils';
 
 export const BinanceWSContext = createContext();
 
@@ -18,14 +18,14 @@ export const BinanceWebSocketProvider = ({ children }) => {
     const wsRef = useRef(null);
     const channels = useRef({}); // mapping streamName - function. eg: {'btcusdt@kline_1h': cbUpdateChart func}
 
+    const [isOpen, setIsOpen] = useState(false);
+
     const subscribe = (channel, callback) => {
         channels.current[channel] = callback;
     };
     const unsubscribe = (channel) => {
         delete channels.current[channel];
     };
-
-    const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
         const binance_ws_url = 'wss://fstream.binance.com/ws';
@@ -159,4 +159,76 @@ export const BinanceProvider = ({ children }) => {
 
     const ret = [symbols, symbolsFilterInfo, kline_intervals];
     return <BinanceContext.Provider value={ret}>{children}</BinanceContext.Provider>;
+};
+
+export const BybitWSContext = createContext();
+export const BybitWebSocketProvider = ({ children }) => {
+    // bybit websocket wss://stream.bybit.com/v5/public/linear
+    // ws.send(JSON.stringify({"req_id": "100001", "op": "ping"}));
+
+    // {
+    //     "req_id": "test", // optional
+    //     "op": "subscribe",
+    //     "args": [
+    //         "orderbook.1.BTCUSDT"
+    //     ]
+    // }
+
+    // {
+    //     "op": "unsubscribe",
+    //     "args": [
+    //         "publicTrade.ETHUSD"
+    //     ],
+    //     "req_id": "customised_id"
+    // }
+    const wsRef = useRef(null);
+    const channels = useRef({});
+
+    const [isOpen, setIsOpen] = useState(false);
+
+    const subscribe = (channel, callback) => {
+        channels.current[channel] = callback;
+    };
+    const unsubscribe = (channel) => {
+        delete channels.current[channel];
+    };
+
+    useEffect(() => {
+        const bybit_ws_url = 'wss://stream.bybit.com/v5/public/linear';
+        let ws = new WebSocket(bybit_ws_url);
+
+        console.log('attempting to connect', bybit_ws_url);
+
+        const onOpen = () => {
+            console.log('connection opened:', bybit_ws_url);
+            setIsOpen(true);
+        };
+        const onClose = () => {
+            console.log('ws connection closed ...');
+            console.log('reconnecting ...');
+            setIsOpen(false);
+        };
+
+        ws.onopen = onOpen;
+        ws.onclose = onClose;
+
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+
+            let topic = data.topic;
+
+            if (channels.current[topic]) {
+                channels.current[topic](data);
+            }
+        };
+
+        wsRef.current = ws;
+        return () => {
+            ws.close();
+        };
+    }, []);
+
+    const ret = [isOpen, wsRef.current?.send.bind(wsRef.current), subscribe, unsubscribe];
+
+    return <BybitWSContext.Provider value={ret}>{children}</BybitWSContext.Provider>;
 };
