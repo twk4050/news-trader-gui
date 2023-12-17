@@ -443,7 +443,7 @@ export default function ChartContainer({
         wsStreamName = `${currentSymbol.toLowerCase()}@kline_${currentInterval}`;
         subscribeTopicJSON = Binance.generateSubscribeTopicJson(wsStreamName, randomNumber);
         unsubscribeTopicJSON = Binance.generateUnsubscribeTopicJson(wsStreamName, randomNumber);
-        mapWSKlineData = Binance.mapBinanceWSKlineData;
+        mapWSKlineData = Binance.parseBinanceWSKlineData;
     }
 
     if (exchange == 'bybit') {
@@ -457,7 +457,7 @@ export default function ChartContainer({
         wsStreamName = `kline.${interval}.${symbol}`; // FIXME:
         subscribeTopicJSON = Bybit.bybitGenerateSubscribeTopicJson(wsStreamName, randomNumber);
         unsubscribeTopicJSON = Bybit.bybitGenerateUnsubscribeTopicJson(wsStreamName, randomNumber);
-        mapWSKlineData = Bybit.mapBybitWSKlineData;
+        mapWSKlineData = Bybit.parseBybitWSKlineData;
     }
 
     function handleOnChangeSymbol(event, newSymbol) {

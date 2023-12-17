@@ -112,12 +112,6 @@ const capoNews = {
 };
 const generateMockNewsFeed = () => [capoNews, news2, news4];
 
-function addQueryParams(endpoint, params) {
-    let paramString = qs.stringify(params);
-
-    return endpoint + '?' + paramString;
-}
-
 // common Utils
 function round_step_size(value, tickSize) {
     // price/qty should be within 9dp, else returns scientific notation e-7
@@ -131,13 +125,12 @@ function round_step_size(value, tickSize) {
 }
 
 function getPrecisionForToFixed(tickSize) {
-    /**
+    /*
     reason for this function is becos tickSize / pricePrecision given by binance exchangeInfo make no sense "0.0000100"
     tickSize also determines pricePrecision of symbol, pricePrecision = how many dp should symbol have
     eg; 1000FLOKI "tickSize": "0.0000100" but "pricePrecision": 7,
     precision imo should be 5 as tickSize is 0.00001
-
-     */
+    */
 
     // only YFI has tickSize: "1"
     if (tickSize === '1') {
@@ -153,10 +146,15 @@ function getPrecisionForToFixed(tickSize) {
     return precision;
 }
 
-// common utils
 function generateRandomNumber() {
     // return random int 0 - 99
     return Math.floor(Math.random() * 100);
+}
+
+function addQueryParams(endpoint, params) {
+    let paramString = qs.stringify(params);
+
+    return endpoint + '?' + paramString;
 }
 
 // Binance
@@ -236,7 +234,7 @@ function parseBinanceKlineResponse(data) {
     return data.map(klineMapping);
 }
 
-function mapBinanceWSKlineData(data) {
+function parseBinanceWSKlineData(data) {
     let e = data.E; // event time.
     let kline = data.k;
     return {
@@ -324,7 +322,7 @@ const Binance = {
     craft_binance_oi_hist_endpoint,
 
     parseBinanceKlineResponse,
-    mapBinanceWSKlineData,
+    parseBinanceWSKlineData,
     mapDataForVolumeHistogram,
 
     initBinancePriceStream,
@@ -425,7 +423,7 @@ function parseBybitKlineResponse(data) {
     return sortedKlineData;
 }
 
-function mapBybitWSKlineData(data) {
+function parseBybitWSKlineData(data) {
     // https://bybit-exchange.github.io/docs/v5/websocket/public/kline
     // {
     //     "topic": "kline.60.1000RATSUSDT",
@@ -485,7 +483,7 @@ const Bybit = {
     craft_bybit_kline_end_point,
 
     parseBybitKlineResponse,
-    mapBybitWSKlineData,
+    parseBybitWSKlineData,
 
     bybitGenerateSubscribeTopicJson,
     bybitGenerateUnsubscribeTopicJson,
