@@ -3,7 +3,12 @@ import ReactDOM from 'react-dom/client';
 
 import App from './App';
 import './index.scss';
-import { BinanceProvider, BinanceWebSocketProvider, BybitWebSocketProvider } from './providers';
+import {
+    BinanceProvider,
+    BinanceWebSocketProvider,
+    BybitWebSocketProvider,
+    BybitProvider,
+} from './providers';
 
 // react v17
 // ReactDOM.render(<App />, document.getElementById('root'));
@@ -15,9 +20,11 @@ root.render(
     <>
         <BinanceProvider>
             <BinanceWebSocketProvider>
-                <BybitWebSocketProvider>
-                    <App />
-                </BybitWebSocketProvider>
+                <BybitProvider>
+                    <BybitWebSocketProvider>
+                        <App />
+                    </BybitWebSocketProvider>
+                </BybitProvider>
             </BinanceWebSocketProvider>
         </BinanceProvider>
     </>

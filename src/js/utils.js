@@ -220,15 +220,20 @@ function craft_binance_oi_hist_endpoint(symbol, interval) {
     return addQueryParams(binance_oi_hist_endpoint, params);
 }
 
-function mapBinanceKlineData(kline) {
-    return {
-        time: kline[0] / 1000,
-        open: +kline[1],
-        high: +kline[2],
-        low: +kline[3],
-        close: +kline[4],
-        volume: +kline[7], // quote asset volume, eg BTCUSDT, quote asset = usdt, base asset= BTC
+function parseBinanceKlineResponse(data) {
+    // data = array of array of epoch, ohlcv data
+
+    const klineMapping = (kline) => {
+        return {
+            time: kline[0] / 1000,
+            open: +kline[1],
+            high: +kline[2],
+            low: +kline[3],
+            close: +kline[4],
+            volume: +kline[7], // quote asset volume, eg BTCUSDT, quote asset = usdt, base asset= BTC
+        };
     };
+    return data.map(klineMapping);
 }
 
 function mapBinanceWSKlineData(data) {
@@ -313,12 +318,12 @@ const commonUtils = {
     getPrecisionForToFixed,
 };
 
-const BinanceUtils = {
+const Binance = {
     get_symbols_filter_info,
     craft_binance_kline_end_point,
     craft_binance_oi_hist_endpoint,
 
-    mapBinanceKlineData,
+    parseBinanceKlineResponse,
     mapBinanceWSKlineData,
     mapDataForVolumeHistogram,
 
@@ -390,15 +395,34 @@ function craft_bybit_kline_end_point(symbol, interval) {
     return addQueryParams(bybit_kline_endpoint, params);
 }
 
-function mapBybitKlineData(kline) {
-    return {
-        time: kline[0] / 1000,
-        open: +kline[1],
-        high: +kline[2],
-        low: +kline[3],
-        close: +kline[4],
-        volume: +kline[6], // turnover in quotecoin usdt
+function parseBybitKlineResponse(data) {
+    // [
+    // [
+    //     "1670608800000",
+    //     "17071",
+    //     "17073",
+    //     "17027",
+    //     "17055.5",
+    //     "268611",
+    //     "15.74462667"
+    // ],
+    // ]
+    const klineMapping = (kline) => {
+        return {
+            time: kline[0] / 1000,
+            open: +kline[1],
+            high: +kline[2],
+            low: +kline[3],
+            close: +kline[4],
+            volume: +kline[6], // turnover in quotecoin usdt
+        };
     };
+
+    let klineData = data.result.list;
+    let mappedKlineData = klineData.map(klineMapping);
+    let sortedKlineData = mappedKlineData.sort((a, b) => a.time - b.time);
+
+    return sortedKlineData;
 }
 
 function mapBybitWSKlineData(data) {
@@ -425,13 +449,15 @@ function mapBybitWSKlineData(data) {
     // }
     let kline = data.data[0];
 
+    // FIXME: rename vars
     return {
-        time: kline.timestamp / 1000,
+        time: kline.start / 1000,
         open: +kline.open,
         high: +kline.high,
         low: +kline.low,
         close: +kline.close,
         volume: +kline.turnover, // quote asset volume
+        e: kline.timestamp,
     };
 }
 
@@ -454,15 +480,15 @@ function bybitGenerateUnsubscribeTopicJson(streamName, id) {
     return JSON.stringify(subscribeTopic);
 }
 
-const BybitUtils = {
+const Bybit = {
     bybit_get_instruments_info,
     craft_bybit_kline_end_point,
 
-    mapBybitKlineData,
+    parseBybitKlineResponse,
     mapBybitWSKlineData,
 
     bybitGenerateSubscribeTopicJson,
     bybitGenerateUnsubscribeTopicJson,
 };
 
-export { GLOBAL_API, newsUtils, commonUtils, BinanceUtils, BybitUtils };
+export { GLOBAL_API, newsUtils, commonUtils, Binance, Bybit };

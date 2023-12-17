@@ -5,9 +5,9 @@ import { Autocomplete, Box, Checkbox, FormControlLabel, Stack, TextField } from 
 import moment from 'moment';
 
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
-import { BinanceUtils, commonUtils } from './utils';
+import { Binance, Bybit, commonUtils } from './utils';
 
-import { BinanceContext, BinanceWSContext } from './providers';
+import { BinanceContext, BinanceWSContext, BybitContext, BybitWSContext } from './providers';
 
 // interface SeriesOptionCommon n LineStyleOptions
 // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/SeriesOptionsCommon
@@ -40,8 +40,19 @@ const MA50_Options = {
 
 const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
 
-function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
-    const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
+// Chart Component = display klineData and connect to exchange websocket kline stream for real time updates
+function Chart({
+    symbol,
+    interval,
+    klineData,
+    tickSize,
+    wsContext,
+    wsStreamName,
+    subscribeTopicJSON,
+    unsubscribeTopicJSON,
+    mapWSKlineData,
+}) {
+    const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = wsContext;
 
     // [{open, high, low, close, time}, {open, high ...}]
     const [newDataFromWS, setNewDataFromWS] = useState();
@@ -65,26 +76,8 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
     useEffect(() => {
         console.log('plotting chart', symbol, interval);
 
-        // 1000SATSUSDT symbolFilterInfo
-        // {
-        //     "pricePrecision": 6,
-        //     "maxPrice": "2000",
-        //     "minPrice": "0.001000",
-        //     "tickSize": "0 . 001000",
-        //     "maxQty": "1000000",
-        //     "minQty": "0.1",
-        //     "stepSize": "0.1"
-        // }
-        const tickSize = symbolFilterInfo['tickSize'];
-
         const precision = commonUtils.getPrecisionForToFixed(tickSize);
         const minMove = tickSize; // parseFloat(tickSize); // 0.00001
-
-        if (symbol === '1000SATSUSDT') {
-            console.log(symbol, symbolFilterInfo);
-            console.log('precision', precision);
-            console.log('minmove', minMove);
-        }
 
         const chartOptions = {
             // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/ChartOptionsImpl
@@ -177,19 +170,6 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
             priceScaleId: 'volId123', // set as an overlay by setting a blank priceScaleId
         };
 
-        const oiOptions = {
-            color: '#e040fb',
-
-            priceFormat: {
-                type: 'volume',
-            },
-            lastValueVisible: false, // disable value on price Axis
-            priceLineVisible: false, // hide horizontal line
-            priceScaleId: 'oiid123', // set something different than volume pricescaleid
-            // crosshairmarker is the circle on lineSeries
-            crosshairMarkerVisible: false,
-        };
-
         // init klineSeries n volume Histogram series
         const chart = createChart(chartRef.current, chartOptions);
         const klineSeries = chart.addCandlestickSeries(klineOptions);
@@ -203,38 +183,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
             },
         });
 
-        let volData = klineData.map(BinanceUtils.mapDataForVolumeHistogram);
-
-        // for oi histogram bars
-        let oiSeries;
-        let fetchOIIntervalId;
-
-        if (oiHistData.length != 0) {
-            oiSeries = chart.addHistogramSeries(oiOptions);
-            oiSeries.priceScale().applyOptions({
-                // set the positioning of the volume series
-                scaleMargins: {
-                    top: 0.8, // highest point of the series will be 70% away from the top
-                    bottom: 0.1,
-                },
-            });
-            oiSeries.setData(oiHistData);
-
-            fetchOIIntervalId = setInterval(() => {
-                const fetch_options = {
-                    method: 'GET',
-                };
-
-                const url = `https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`;
-                fetch(url, fetch_options)
-                    .then((res) => res.json())
-                    .then((data) => {
-                        let parsedOIData = mapOIData(data, interval);
-
-                        oiSeries.update(parsedOIData);
-                    });
-            }, 15000);
-        }
+        let volData = klineData.map(Binance.mapDataForVolumeHistogram);
 
         klineSeries.setData(klineData);
         volumeSeries.setData(volData);
@@ -314,11 +263,6 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
 
             ohlcLegend.innerHTML = formatOHLCLegend(kline);
             volLegend.innerHTML = formatVolLegend(volBar);
-
-            if (oiSeries) {
-                let oiBar = param.seriesData.get(oiSeries);
-                oiLegend.innerHTML = formatOILegend(oiBar);
-            }
         }
 
         // FIXME: quick code for Measure tool tip. use Shift + leftClick on chart
@@ -394,7 +338,6 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
             chart.unsubscribeClick(MeasureClickHandler);
             chart.unsubscribeCrosshairMove(handleCrossHairMoveForLegend);
             chart.remove();
-            clearInterval(fetchOIIntervalId); // FIXME: refactor next time
         };
     }, [klineData]);
 
@@ -402,7 +345,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
     // if not open, return
     useEffect(() => {
         /* 
-        1. send msg to websocket to subscribe to stream  {symbol}@kline_{interval}
+        1. send msg to websocket to subscribe to stream 
         2. wsProvider channels is a mapping of channel_name to callbackfn. eg 'btcusdt@kline_1h' -> updateKlineCharts func
         - use 'subscribeToStreamName' and 'unsubscribe' to add func to streamName
         - channel_name = {symbol}@kline_{interval} // symbol lowerCase
@@ -413,26 +356,18 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
             return;
         }
 
-        const streamName = `${symbol.toLowerCase()}@kline_${interval}`; // binance calls it streamName
-        const randomNumber = commonUtils.generateRandomNumber();
-
-        let subTopic = BinanceUtils.generateSubscribeTopicJson(streamName, randomNumber);
-
-        console.log(`sending ${streamName} to binance ws to subscribe`);
-        wsSendMsg(subTopic);
+        wsSendMsg(subscribeTopicJSON);
 
         const cb = (data) => {
-            let parsedKlineData = BinanceUtils.mapBinanceWSKlineData(data);
+            let parsedKlineData = mapWSKlineData(data);
             setNewDataFromWS(parsedKlineData);
         };
-        subscribeToStreamName(streamName, cb);
+        subscribeToStreamName(wsStreamName, cb);
 
         // teardown
         return () => {
-            console.log(`sending ${streamName} to binance ws to unsubscribe`);
-            let unsubTopic = BinanceUtils.generateUnsubscribeTopicJson(streamName, randomNumber);
-            wsSendMsg(unsubTopic);
-            unsubscribe(streamName, cb);
+            wsSendMsg(unsubscribeTopicJSON);
+            unsubscribe(wsStreamName, cb);
         };
     }, [isOpen]);
 
@@ -441,7 +376,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
         if (newDataFromWS) {
             // newDataFromWS from utils.mapWSKlineData, type {time, open, high ..., volume}
             // newVolData type {time, value}
-            let newVolData = BinanceUtils.mapDataForVolumeHistogram(newDataFromWS);
+            let newVolData = Binance.mapDataForVolumeHistogram(newDataFromWS);
 
             klineSeriesDrawer.update(newDataFromWS);
             volSeriesDrawer.update(newVolData);
@@ -451,7 +386,7 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
 
             ohlcLegendRef.current.innerHTML = formatOHLCLegend(newDataFromWS);
             volLegendRef.current.innerHTML = formatVolLegend(newVolData);
-            timeRemainingLegendRef.current.innerHTML = fKlineCountdown(kline_event_time, interval);
+            timeRemainingLegendRef.current.innerHTML = fKlineCountdown(kline_event_time, interval); // FIXME:
 
             // moving average
             const currentKlineData = klineSeriesDrawer.data();
@@ -469,24 +404,61 @@ function Chart({ symbol, interval, klineData, oiHistData, symbolFilterInfo }) {
 }
 
 export default function ChartContainer({
+    exchange = 'binance',
+    symbol = 'BTCUSDT',
     sxProps,
     setOrderSymbol, // from parent
-    symbol = 'BTCUSDT',
     interval = '1h',
 }) {
-    const [symbols, symbolsFilterInfo, kline_intervals] = useContext(BinanceContext);
+    const binanceWSContext = useContext(BinanceWSContext);
+    const bybitWSContext = useContext(BybitWSContext);
+    const [binanceSymbols, binanceSymbolsInfo, binanceKlineIntervals] = useContext(BinanceContext);
+    const [bybitSymbols, bybitSymbolsInfo, bybitKlineIntervals] = useContext(BybitContext);
 
     const chartContainerRef = useRef(null);
+
+    // FIXME: quick fix
+    if (exchange == 'bybit') {
+        interval = bybitKlineIntervals[interval];
+    }
 
     const [currentSymbol, setCurrentSymbol] = useState(symbol);
     const [currentInterval, setCurrentInterval] = useState(interval);
     const [klineData, setKlineData] = useState([]);
-    const [oiHistData, setOIHistData] = useState([]);
-    const [showOI, setShowOI] = useState(false);
 
-    const symbolFilterInfo = symbolsFilterInfo[currentSymbol];
-    const oiHistIntervalOptions = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d']; // oi_hist_endpoint params from binance
-    const validOIInterval = oiHistIntervalOptions.includes(currentInterval); // boolean
+    // vars for ChartContainer calling kline data api
+    let klineEndPoint, parseKlineData;
+
+    // Chart Props
+    let tickSize, wsContext, wsStreamName, subscribeTopicJSON, unsubscribeTopicJSON, mapWSKlineData;
+
+    const randomNumber = commonUtils.generateRandomNumber();
+
+    if (exchange == 'binance') {
+        klineEndPoint = Binance.craft_binance_kline_end_point(currentSymbol, currentInterval);
+        parseKlineData = Binance.parseBinanceKlineResponse;
+
+        tickSize = binanceSymbolsInfo[currentSymbol]['tickSize'];
+        wsContext = binanceWSContext;
+        wsStreamName = `${currentSymbol.toLowerCase()}@kline_${currentInterval}`;
+        subscribeTopicJSON = Binance.generateSubscribeTopicJson(wsStreamName, randomNumber);
+        unsubscribeTopicJSON = Binance.generateUnsubscribeTopicJson(wsStreamName, randomNumber);
+        mapWSKlineData = Binance.mapBinanceWSKlineData;
+    }
+
+    if (exchange == 'bybit') {
+        // https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&limit=500
+        // FIXME: currently using hardcoded values 1h == 60 interval
+        klineEndPoint = Bybit.craft_bybit_kline_end_point(currentSymbol, currentInterval);
+        parseKlineData = Bybit.parseBybitKlineResponse;
+
+        tickSize = bybitSymbolsInfo[currentSymbol]['tickSize'];
+        wsContext = bybitWSContext;
+        wsStreamName = `kline.${interval}.${symbol}`; // FIXME:
+        subscribeTopicJSON = Bybit.bybitGenerateSubscribeTopicJson(wsStreamName, randomNumber);
+        unsubscribeTopicJSON = Bybit.bybitGenerateUnsubscribeTopicJson(wsStreamName, randomNumber);
+        mapWSKlineData = Bybit.mapBybitWSKlineData;
+    }
 
     function handleOnChangeSymbol(event, newSymbol) {
         setKlineData([]);
@@ -503,36 +475,18 @@ export default function ChartContainer({
         return changeInterval(interval);
     }
     useEffect(() => {
-        const kline_end_point = BinanceUtils.craft_binance_kline_end_point(
-            currentSymbol,
-            currentInterval
-        );
-
         const fetch_options = {
             method: 'GET',
         };
 
-        fetch(kline_end_point, fetch_options)
+        fetch(klineEndPoint, fetch_options)
             .then((res) => res.json())
             .then((data) => {
-                let parsedData = data.map(BinanceUtils.mapBinanceKlineData);
+                console.log('from fetch kline endpoint', klineEndPoint);
+
+                let parsedData = parseKlineData(data);
                 setKlineData(parsedData);
             });
-
-        if (showOI && validOIInterval) {
-            const oi_hist_endpoint = BinanceUtils.craft_binance_oi_hist_endpoint(
-                currentSymbol,
-                currentInterval
-            );
-
-            fetch(oi_hist_endpoint, fetch_options)
-                .then((res) => res.json())
-                .then((data) => {
-                    console.log('getting oi', oi_hist_endpoint);
-                    let parsedOIHistData = data.map(mapOIHistData);
-                    setOIHistData(parsedOIHistData);
-                });
-        }
 
         const elem = chartContainerRef.current;
         function onDblClickListener(e) {
@@ -545,10 +499,9 @@ export default function ChartContainer({
 
         return () => {
             setKlineData([]);
-            setOIHistData([]);
             elem.removeEventListener('dblclick', onDblClickListener);
         };
-    }, [currentSymbol, currentInterval, showOI]);
+    }, [currentSymbol, currentInterval]);
 
     return (
         <Box
@@ -566,7 +519,7 @@ export default function ChartContainer({
                 sx={{ padding: '4px', borderBottom: '2px solid gray' }}
             >
                 <Autocomplete
-                    options={symbols}
+                    options={binanceSymbols}
                     renderInput={(params) => (
                         <TextField
                             {...params}
@@ -589,7 +542,7 @@ export default function ChartContainer({
                     }}
                 ></Autocomplete>
 
-                {kline_intervals.map((interval, i) =>
+                {binanceKlineIntervals.map((interval, i) =>
                     interval == currentInterval ? (
                         <SelectedIntervalButton
                             key={i}
@@ -606,33 +559,26 @@ export default function ChartContainer({
 
                 <FormControlLabel
                     value="start"
-                    control={<Checkbox onChange={(e) => setShowOI(!showOI)} />}
-                    label="oi"
+                    control={<Checkbox onChange={(e) => {}} />}
+                    label="test1"
                     labelPlacement="start"
                 />
             </Stack>
 
             {/* FIXME: rethink this ternary logic */}
-            {validOIInterval && showOI
-                ? klineData.length != 0 &&
-                  oiHistData.length != 0 && (
-                      <Chart
-                          symbol={currentSymbol}
-                          interval={currentInterval}
-                          klineData={klineData}
-                          oiHistData={oiHistData}
-                          symbolFilterInfo={symbolFilterInfo}
-                      />
-                  )
-                : klineData.length != 0 && (
-                      <Chart
-                          symbol={currentSymbol}
-                          interval={currentInterval}
-                          klineData={klineData}
-                          oiHistData={[]}
-                          symbolFilterInfo={symbolFilterInfo}
-                      />
-                  )}
+            {klineData.length != 0 && (
+                <Chart
+                    symbol={currentSymbol}
+                    interval={currentInterval}
+                    klineData={klineData}
+                    tickSize={tickSize}
+                    wsContext={wsContext}
+                    wsStreamName={wsStreamName}
+                    subscribeTopicJSON={subscribeTopicJSON}
+                    unsubscribeTopicJSON={unsubscribeTopicJSON}
+                    mapWSKlineData={mapWSKlineData}
+                />
+            )}
         </Box>
     );
 }

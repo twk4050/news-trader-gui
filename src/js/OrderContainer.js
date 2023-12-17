@@ -3,7 +3,7 @@ import { Autocomplete, TextField, Typography, Stack, InputAdornment, Button } fr
 
 import { BuyButton, SellButton } from './styles/StyledComponent123';
 
-import { BinanceUtils, GLOBAL_API, commonUtils } from './utils';
+import { Binance, GLOBAL_API, commonUtils } from './utils';
 import { BinanceContext, BinanceWSContext } from './providers';
 
 function OrderComponent({ symbol, price, filterInfo }) {
@@ -146,7 +146,7 @@ export default function OrderContainer({ symbol, sxProps }) {
         const randomNumber = commonUtils.generateRandomNumber();
         console.log(`sending ${streamName} to binance ws to subscribe`);
 
-        let subTopic = BinanceUtils.generateSubscribeTopicJson(streamName, randomNumber);
+        let subTopic = Binance.generateSubscribeTopicJson(streamName, randomNumber);
         wsSendMsg(subTopic);
 
         // FIXME: should cb know how to parse ws json data or just pass 'handleAllCoinPrice' fn only
@@ -165,7 +165,7 @@ export default function OrderContainer({ symbol, sxProps }) {
 
         return () => {
             console.log(`sending ${streamName} to binance ws to unsubscribe`);
-            let unsubTopic = BinanceUtils.generateUnsubscribeTopicJson(streamName, randomNumber);
+            let unsubTopic = Binance.generateUnsubscribeTopicJson(streamName, randomNumber);
             wsSendMsg(unsubTopic);
             unsubscribe(streamName, cb);
         };
