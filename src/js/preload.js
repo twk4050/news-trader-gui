@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('API123', {
         // v6 change websocket connections. 1 ws connection to handle multi charts data. * React.useContext .createContext
         // v6.1 change wsPriceStream to same connection as kline ws
         // v6.2 code refactor. created BinanceContext / BinanceProvider to provide symbols , symbolsFilterInfo
-        version: 'v6.2',
+        // v7.0 integrated bybit chart. working on bybit orders next
+        version: 'v7.0',
     },
 });

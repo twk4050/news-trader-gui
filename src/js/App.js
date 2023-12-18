@@ -30,8 +30,8 @@ const theme = createTheme({
 
 export default function App() {
     const [symbols, symbolsFilterInfo] = useContext(BinanceContext);
-    const [isOpen, send, sub, unsub] = useContext(BinanceWSContext);
-    const [isOpen1, send1, sub1, unsub1] = useContext(BybitWSContext);
+    // const [isOpen, send, sub, unsub] = useContext(BinanceWSContext);
+    // const [isOpen1, send1, sub1, unsub1] = useContext(BybitWSContext);
 
     const [orderSymbol, setOrderSymbol] = useState('BTCUSDT');
 
@@ -39,34 +39,24 @@ export default function App() {
         {
             exchange: 'binance',
             coin: 'BTCUSDT',
+            interval: '1d',
         },
         {
-            exchange: 'bybit',
-            coin: 'BTCUSDT',
+            exchange: 'binance',
+            coin: 'ETHUSDT',
+            interval: '1d',
         },
         {
             exchange: 'binance',
             coin: 'SOLUSDT',
+            interval: '1h',
         },
         {
             exchange: 'binance',
-            coin: 'SOLUSDT',
+            coin: 'INJUSDT',
+            interval: '1h',
         },
     ];
-
-    useEffect(() => {
-        // Binance.get_symbols_filter_info(console.log);
-        // Bybit.bybit_get_instruments_info(console.log);
-    }, []);
-
-    useEffect(() => {
-        if (isOpen1) {
-            // let streamName = 'kline.60.1000RATSUSDT';
-            // let id = commonUtils.generateRandomNumber();
-            // let topic = Bybit.bybitGenerateSubscribeTopicJson(streamName, id);
-            // send1(topic);
-        }
-    }, [isOpen1]);
 
     // width = 2 chart 536 x2 + news 320 ~ 1400px
     const sxPropsChartContainer = {};
@@ -106,40 +96,24 @@ export default function App() {
                             spacing={0.8}
                             sx={{ minWidth: '1100px', maxWidth: '1100px' }}
                         >
-                            <Grid item md={6}>
+                            {hotCoins.map((coin, i) => (
+                                <Grid item md={6} key={i}>
+                                    <ChartContainer
+                                        exchange={coin['exchange']}
+                                        symbol={coin['coin']}
+                                        setOrderSymbol={setOrderSymbol}
+                                        sxProps={sxPropsChartContainer}
+                                        interval={coin['interval']}
+                                    />
+                                </Grid>
+                            ))}
+                            {/* <Grid item md={6}>
                                 <ChartContainer
-                                    exchange={hotCoins[0]['exchange']}
-                                    symbol={hotCoins[0]['coin']}
+                                    exchange={'binance'}
+                                    symbol={'BTCUSDT'}
                                     setOrderSymbol={setOrderSymbol}
                                     sxProps={sxPropsChartContainer}
                                     interval={'1d'}
-                                />
-                            </Grid>
-                            <Grid item md={6}>
-                                <ChartContainer
-                                    exchange={hotCoins[1]['exchange']}
-                                    symbol={hotCoins[1]['coin']}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    interval={'1h'}
-                                />
-                            </Grid>
-                            {/* <Grid item md={6}>
-                                <ChartContainer
-                                    exchange={hotCoins[2]['exchange']}
-                                    symbol={hotCoins[2]['coin']}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    interval={'1h'}
-                                />
-                            </Grid>
-                            <Grid item md={6}>
-                                <ChartContainer
-                                    exchange={hotCoins[3]['exchange']}
-                                    symbol={hotCoins[3]['coin']}
-                                    setOrderSymbol={setOrderSymbol}
-                                    sxProps={sxPropsChartContainer}
-                                    interval={'1h'}
                                 />
                             </Grid> */}
                         </Grid>

@@ -489,8 +489,6 @@ export default function ChartContainer({
             setExchangeInterval(exchangeIntervalMapping[currentUIInterval]['binance']);
             setCurrentSymbol('BTCUSDT');
         }
-
-        console.log('in handleonchange excahnge', currentExchange);
     }
 
     function handleOnChangeSymbol(event, newSymbol) {
