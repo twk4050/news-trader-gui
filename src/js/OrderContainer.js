@@ -121,7 +121,7 @@ function OrderComponent({ symbol, price, filterInfo }) {
 }
 
 export default function OrderContainer({ symbol, sxProps }) {
-    const [, symbolsFilterInfo, ,] = useContext(BinanceContext);
+    const [, symbolsFilterInfo] = useContext(BinanceContext);
     const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
 
     const [exchangeCoinPrice, setExchangeCoinPrice] = useState({});

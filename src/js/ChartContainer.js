@@ -412,8 +412,8 @@ export default function ChartContainer({
 }) {
     const binanceWSContext = useContext(BinanceWSContext);
     const bybitWSContext = useContext(BybitWSContext);
-    const [binanceSymbols, binanceSymbolsInfo, binanceKlineIntervals] = useContext(BinanceContext);
-    const [bybitSymbols, bybitSymbolsInfo, bybitKlineIntervals] = useContext(BybitContext);
+    const [binanceSymbols, binanceSymbolsInfo] = useContext(BinanceContext);
+    const [bybitSymbols, bybitSymbolsInfo] = useContext(BybitContext);
 
     const chartContainerRef = useRef(null);
 

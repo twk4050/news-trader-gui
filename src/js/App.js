@@ -29,7 +29,7 @@ const theme = createTheme({
 });
 
 export default function App() {
-    const [symbols, symbolsFilterInfo, kline_intervals] = useContext(BinanceContext);
+    const [symbols, symbolsFilterInfo] = useContext(BinanceContext);
     const [isOpen, send, sub, unsub] = useContext(BinanceWSContext);
     const [isOpen1, send1, sub1, unsub1] = useContext(BybitWSContext);
 

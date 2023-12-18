@@ -149,7 +149,6 @@ UseContext CreateContext BinanceWebSocketProvider superior
 export const BinanceContext = createContext();
 export const BinanceProvider = ({ children }) => {
     const [symbolsFilterInfo, setSymbolsFilterInfo] = useState(null);
-    const kline_intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w', '5m'];
 
     useEffect(() => {
         Binance.get_symbols_filter_info(setSymbolsFilterInfo);
@@ -157,39 +156,13 @@ export const BinanceProvider = ({ children }) => {
 
     let symbols = symbolsFilterInfo ? Object.keys(symbolsFilterInfo) : null;
 
-    const ret = [symbols, symbolsFilterInfo, kline_intervals];
+    const ret = [symbols, symbolsFilterInfo];
     return <BinanceContext.Provider value={ret}>{children}</BinanceContext.Provider>;
 };
 
 export const BybitContext = createContext();
 export const BybitProvider = ({ children }) => {
     const [symbolsFilterInfo, setSymbolsFilterInfo] = useState(null);
-    // const kline_intervals = [
-    //     '1',
-    //     '3',
-    //     '5',
-    //     '15',
-    //     '30',
-    //     '60',
-    //     '120',
-    //     '240',
-    //     '360',
-    //     '720',
-    //     'D',
-    //     'M',
-    //     'W',
-    // ];
-    const kline_intervals = {
-        '1m': '1',
-        '3m': '3',
-        '5m': '5',
-        '15m': '15',
-        '1h': '60',
-        '4h': '240',
-        '1d': 'D',
-        '1w': 'W',
-    };
-    // binance = 1m 3m 5m 15m 1H 4H 1D 1W 5m
 
     useEffect(() => {
         Bybit.bybit_get_instruments_info(setSymbolsFilterInfo);
@@ -197,7 +170,7 @@ export const BybitProvider = ({ children }) => {
 
     let symbols = symbolsFilterInfo ? Object.keys(symbolsFilterInfo) : null;
 
-    const ret = [symbols, symbolsFilterInfo, kline_intervals];
+    const ret = [symbols, symbolsFilterInfo];
     return <BybitContext.Provider value={ret}>{children}</BybitContext.Provider>;
 };
 
