@@ -265,7 +265,7 @@ function Chart({
             volLegend.innerHTML = formatVolLegend(volBar);
         }
 
-        // FIXME: quick code for Measure tool tip. use Shift + leftClick on chart
+        // quick code for Measure tool tip. use Shift + leftClick on chart
         let toolTip = document.createElement('div');
         const toolTipWidth = 100;
         const toolTipHeight = 60;
@@ -417,14 +417,21 @@ export default function ChartContainer({
 
     const chartContainerRef = useRef(null);
 
-    const UI_Intervals = IntervalUtils.UI_Intervals;
+    // var inputs:
+    // 1. exchange binance or bybit
+    // 2. based on exchange, interval mapping might be diff. 1h = 1h on binance, 60 on bybit
+    const [currentExchange, setCurrentExchange] = useState(exchange);
+
     const exchangeIntervalMapping = IntervalUtils.exchangeIntervalMapping; // FIXME: store exchange mapping here or utils.js
-    const exchangeInterval123 = exchangeIntervalMapping[interval][exchange]; // TODO: below if else clause can follow this
+    const exchangeInterval123 = exchangeIntervalMapping[interval][currentExchange]; // TODO: below if else clause can follow this
+    const [exchangeInterval, setExchangeInterval] = useState(exchangeInterval123);
 
     const [currentSymbol, setCurrentSymbol] = useState(symbol);
     const [currentUIInterval, setCurrentUIInterval] = useState(interval);
-    const [exchangeInterval, setExchangeInterval] = useState(exchangeInterval123);
     const [klineData, setKlineData] = useState([]);
+
+    const UI_symbols = currentExchange == 'binance' ? binanceSymbols : bybitSymbols;
+    const UI_Intervals = IntervalUtils.UI_Intervals;
 
     // vars for ChartContainer calling kline data api
     let klineEndPoint, parseKlineData;
@@ -434,7 +441,8 @@ export default function ChartContainer({
 
     const randomNumber = commonUtils.generateRandomNumber();
 
-    if (exchange == 'binance') {
+    // FIXME:
+    if (currentExchange == 'binance') {
         klineEndPoint = Binance.craft_binance_kline_end_point(currentSymbol, exchangeInterval);
         parseKlineData = Binance.parseBinanceKlineResponse;
 
@@ -446,7 +454,7 @@ export default function ChartContainer({
         mapWSKlineData = Binance.parseBinanceWSKlineData;
     }
 
-    if (exchange == 'bybit') {
+    if (currentExchange == 'bybit') {
         // https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&limit=500
         // FIXME: currently using hardcoded values 1h == 60 interval
         klineEndPoint = Bybit.craft_bybit_kline_end_point(currentSymbol, exchangeInterval);
@@ -454,28 +462,52 @@ export default function ChartContainer({
 
         tickSize = bybitSymbolsInfo[currentSymbol]['tickSize'];
         wsContext = bybitWSContext;
-        wsStreamName = `kline.${exchangeInterval}.${symbol}`; // FIXME:
+        wsStreamName = `kline.${exchangeInterval}.${currentSymbol}`;
         subscribeTopicJSON = Bybit.bybitGenerateSubscribeTopicJson(wsStreamName, randomNumber);
         unsubscribeTopicJSON = Bybit.bybitGenerateUnsubscribeTopicJson(wsStreamName, randomNumber);
         mapWSKlineData = Bybit.parseBybitWSKlineData;
     }
 
+    // console.log(
+    //     `printing vars, exchange: ${currentExchange}, exInterval: ${exchangeInterval}, ${currentSymbol}, ${currentUIInterval}`
+    // );
+    // console.log(
+    //     `streamname: ${wsStreamName}, subTopic: ${subscribeTopicJSON}, unsubTopic: ${unsubscribeTopicJSON}`
+    // );
+
+    // FIXME: quick fix
+    function handleOnChangeExchange(event) {
+        if (currentExchange == 'binance') {
+            // FIXME: changing exchange values only does not trigger other useState like useState(interval)
+            // thus, interval is still at previous exchange's interval
+            // eg; from binance 1d change to bybit, bybit 1d. should be bybit D
+            setCurrentExchange('bybit');
+            setExchangeInterval(exchangeIntervalMapping[currentUIInterval]['bybit']);
+            setCurrentSymbol('BTCUSDT');
+        } else {
+            setCurrentExchange('binance');
+            setExchangeInterval(exchangeIntervalMapping[currentUIInterval]['binance']);
+            setCurrentSymbol('BTCUSDT');
+        }
+
+        console.log('in handleonchange excahnge', currentExchange);
+    }
+
     function handleOnChangeSymbol(event, newSymbol) {
-        setKlineData([]);
         setCurrentSymbol(newSymbol);
     }
 
     function handleOnClickUIInterval(event, interval) {
         function changeInterval(interval) {
-            if (interval !== currentUIInterval) {
-                setKlineData([]);
-            }
             setCurrentUIInterval(interval);
-            setExchangeInterval(exchangeIntervalMapping[interval][exchange]);
+            setExchangeInterval(exchangeIntervalMapping[interval][currentExchange]);
         }
         return changeInterval(interval);
     }
     useEffect(() => {
+        // new. if theres changes to symbol / interval / exchange, set kline data to empty and fetch new data
+        setKlineData([]);
+
         const fetch_options = {
             method: 'GET',
         };
@@ -502,7 +534,7 @@ export default function ChartContainer({
             setKlineData([]);
             elem.removeEventListener('dblclick', onDblClickListener);
         };
-    }, [currentSymbol, currentUIInterval]);
+    }, [currentSymbol, currentUIInterval, currentExchange]);
 
     return (
         <Box
@@ -520,7 +552,7 @@ export default function ChartContainer({
                 sx={{ padding: '4px', borderBottom: '2px solid gray' }}
             >
                 <Autocomplete
-                    options={binanceSymbols}
+                    options={UI_symbols}
                     renderInput={(params) => (
                         <TextField
                             {...params}
@@ -563,8 +595,8 @@ export default function ChartContainer({
 
                 <FormControlLabel
                     value="start"
-                    control={<Checkbox onChange={(e) => {}} />}
-                    label="test1"
+                    control={<Checkbox onChange={handleOnChangeExchange} />}
+                    label="bybit?"
                     labelPlacement="start"
                 />
             </Stack>
