@@ -99,7 +99,7 @@ export default function App() {
                             {hotCoins.map((coin, i) => (
                                 <Grid item md={6} key={i}>
                                     <ChartContainer
-                                        exchange={coin['exchange']}
+                                        exchangeProp={coin['exchange']}
                                         symbol={coin['coin']}
                                         setOrderSymbol={setOrderSymbol}
                                         sxProps={sxPropsChartContainer}

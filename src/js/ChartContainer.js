@@ -5,7 +5,7 @@ import { Autocomplete, Box, Checkbox, FormControlLabel, Stack, TextField } from 
 import moment from 'moment';
 
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
-import { Binance, Bybit, commonUtils, IntervalUtils } from './utils';
+import { Binance, Bybit, commonUtils, ChartContainerUtils } from './utils';
 
 import { BinanceContext, BinanceWSContext, BybitContext, BybitWSContext } from './providers';
 
@@ -355,7 +355,7 @@ function Chart({
         if (!isOpen) {
             return;
         }
-
+        console.log('in Chart, useEffect', subscribeTopicJSON, unsubscribeTopicJSON);
         wsSendMsg(subscribeTopicJSON);
 
         const cb = (data) => {
@@ -404,7 +404,7 @@ function Chart({
 }
 
 export default function ChartContainer({
-    exchange = 'binance',
+    exchangeProp = 'binance',
     symbol = 'BTCUSDT',
     sxProps,
     setOrderSymbol, // from parent
@@ -420,72 +420,44 @@ export default function ChartContainer({
     // var inputs:
     // 1. exchange binance or bybit
     // 2. based on exchange, interval mapping might be diff. 1h = 1h on binance, 60 on bybit
-    const [currentExchange, setCurrentExchange] = useState(exchange);
-
-    const exchangeIntervalMapping = IntervalUtils.exchangeIntervalMapping; // FIXME: store exchange mapping here or utils.js
-    const exchangeInterval123 = exchangeIntervalMapping[interval][currentExchange]; // TODO: below if else clause can follow this
-    const [exchangeInterval, setExchangeInterval] = useState(exchangeInterval123);
-
-    const [currentSymbol, setCurrentSymbol] = useState(symbol);
+    const [exchange, setExchange] = useState(exchangeProp);
     const [currentUIInterval, setCurrentUIInterval] = useState(interval);
+    const [currentSymbol, setCurrentSymbol] = useState(symbol); // FIXME: change var name to symbol? then props become symbolProp
     const [klineData, setKlineData] = useState([]);
 
-    const UI_symbols = currentExchange == 'binance' ? binanceSymbols : bybitSymbols;
-    const UI_Intervals = IntervalUtils.UI_Intervals;
+    const exchangeIntervalMapping = ChartContainerUtils.exchangeIntervalMapping;
+    const exchangeInterval123 = exchangeIntervalMapping[interval][exchange];
+    const [exchangeInterval, setExchangeInterval] = useState(exchangeInterval123);
 
-    // vars for ChartContainer calling kline data api
-    let klineEndPoint, parseKlineData;
+    // func mappings E.craftKlineEndpoint.binance / E.craftKlineEndpoint.bybit
+    const E = ChartContainerUtils.exchangeFuncMapping;
+    E['symbols'] = { binance: binanceSymbols, bybit: bybitSymbols };
+    E['symbolsInfo'] = { binance: binanceSymbolsInfo, bybit: bybitSymbolsInfo };
+    E['wsContext'] = { binance: binanceWSContext, bybit: bybitWSContext };
 
-    // Chart Props
-    let tickSize, wsContext, wsStreamName, subscribeTopicJSON, unsubscribeTopicJSON, mapWSKlineData;
-
+    // vars for Chart component and UI
     const randomNumber = commonUtils.generateRandomNumber();
-
-    // FIXME:
-    if (currentExchange == 'binance') {
-        klineEndPoint = Binance.craft_binance_kline_end_point(currentSymbol, exchangeInterval);
-        parseKlineData = Binance.parseBinanceKlineResponse;
-
-        tickSize = binanceSymbolsInfo[currentSymbol]['tickSize'];
-        wsContext = binanceWSContext;
-        wsStreamName = `${currentSymbol.toLowerCase()}@kline_${exchangeInterval}`;
-        subscribeTopicJSON = Binance.generateSubscribeTopicJson(wsStreamName, randomNumber);
-        unsubscribeTopicJSON = Binance.generateUnsubscribeTopicJson(wsStreamName, randomNumber);
-        mapWSKlineData = Binance.parseBinanceWSKlineData;
-    }
-
-    if (currentExchange == 'bybit') {
-        // https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&limit=500
-        // FIXME: currently using hardcoded values 1h == 60 interval
-        klineEndPoint = Bybit.craft_bybit_kline_end_point(currentSymbol, exchangeInterval);
-        parseKlineData = Bybit.parseBybitKlineResponse;
-
-        tickSize = bybitSymbolsInfo[currentSymbol]['tickSize'];
-        wsContext = bybitWSContext;
-        wsStreamName = `kline.${exchangeInterval}.${currentSymbol}`;
-        subscribeTopicJSON = Bybit.bybitGenerateSubscribeTopicJson(wsStreamName, randomNumber);
-        unsubscribeTopicJSON = Bybit.bybitGenerateUnsubscribeTopicJson(wsStreamName, randomNumber);
-        mapWSKlineData = Bybit.parseBybitWSKlineData;
-    }
-
-    // console.log(
-    //     `printing vars, exchange: ${currentExchange}, exInterval: ${exchangeInterval}, ${currentSymbol}, ${currentUIInterval}`
-    // );
-    // console.log(
-    //     `streamname: ${wsStreamName}, subTopic: ${subscribeTopicJSON}, unsubTopic: ${unsubscribeTopicJSON}`
-    // );
+    const UI_symbols = E.symbols[exchange]; // UI_symbols = exchange == 'binance' ? binanceSymbols : bybitSymbols;
+    const klineEndPoint = E.craftKlineEndPoint[exchange](currentSymbol, exchangeInterval);
+    const parseKlineData = E.parseKlineResponse[exchange];
+    const tickSize = E['symbolsInfo'][exchange][currentSymbol]['tickSize'];
+    const wsContext = E['wsContext'][exchange];
+    const wsStreamName = E.craftKlineStreamName[exchange](currentSymbol, exchangeInterval);
+    const subscribeTopicJSON = E.craftSubTopicJSON[exchange](wsStreamName, randomNumber);
+    const unsubscribeTopicJSON = E.craftUnsubTopicJSON[exchange](wsStreamName, randomNumber);
+    const mapWSKlineData = E.parseWSKlineData[exchange];
 
     // FIXME: quick fix
     function handleOnChangeExchange(event) {
-        if (currentExchange == 'binance') {
+        if (exchange == 'binance') {
             // FIXME: changing exchange values only does not trigger other useState like useState(interval)
             // thus, interval is still at previous exchange's interval
             // eg; from binance 1d change to bybit, bybit 1d. should be bybit D
-            setCurrentExchange('bybit');
+            setExchange('bybit');
             setExchangeInterval(exchangeIntervalMapping[currentUIInterval]['bybit']);
             setCurrentSymbol('BTCUSDT');
         } else {
-            setCurrentExchange('binance');
+            setExchange('binance');
             setExchangeInterval(exchangeIntervalMapping[currentUIInterval]['binance']);
             setCurrentSymbol('BTCUSDT');
         }
@@ -498,7 +470,7 @@ export default function ChartContainer({
     function handleOnClickUIInterval(event, interval) {
         function changeInterval(interval) {
             setCurrentUIInterval(interval);
-            setExchangeInterval(exchangeIntervalMapping[interval][currentExchange]);
+            setExchangeInterval(exchangeIntervalMapping[interval][exchange]);
         }
         return changeInterval(interval);
     }
@@ -532,7 +504,7 @@ export default function ChartContainer({
             setKlineData([]);
             elem.removeEventListener('dblclick', onDblClickListener);
         };
-    }, [currentSymbol, currentUIInterval, currentExchange]);
+    }, [currentSymbol, currentUIInterval, exchange]);
 
     return (
         <Box
@@ -573,7 +545,7 @@ export default function ChartContainer({
                     }}
                 ></Autocomplete>
 
-                {UI_Intervals.map((ui_interval, i) =>
+                {ChartContainerUtils.UI_Intervals.map((ui_interval, i) =>
                     ui_interval == currentUIInterval ? (
                         <SelectedIntervalButton
                             key={i}

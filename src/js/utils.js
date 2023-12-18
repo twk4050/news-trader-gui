@@ -284,6 +284,10 @@ function initBinancePriceStream(cb) {
     };
 }
 
+function craftKlineStreamName(symbol, interval) {
+    return `${symbol.toLowerCase()}@kline_${interval}`;
+}
+
 function generateSubscribeTopicJson(streamName, id) {
     let subscribeTopic = {
         method: 'SUBSCRIBE',
@@ -303,33 +307,7 @@ function generateUnsubscribeTopicJson(streamName, id) {
     return JSON.stringify(unsubscribeTopic);
 }
 
-const newsUtils = {
-    // get_formatted_date, // only used in parse_news
-    // parse_news, // only used in initTreeWS // not needed to export
-    initTreeWS,
-    generateMockNewsFeed,
-};
-
-const commonUtils = {
-    generateRandomNumber,
-    round_step_size,
-    getPrecisionForToFixed,
-};
-
-const Binance = {
-    get_symbols_filter_info,
-    craft_binance_kline_end_point,
-    craft_binance_oi_hist_endpoint,
-
-    parseBinanceKlineResponse,
-    parseBinanceWSKlineData,
-    mapDataForVolumeHistogram,
-
-    initBinancePriceStream,
-    generateSubscribeTopicJson,
-    generateUnsubscribeTopicJson,
-};
-
+// Bybit
 function bybit_get_instruments_info(cb) {
     // only get LinearPerpetual and USDT perps.
     // no ETCPERP or ETH-15DEC23
@@ -459,6 +437,11 @@ function parseBybitWSKlineData(data) {
     };
 }
 
+function bybitCraftKlineStreamName(symbol, interval) {
+    // interval 1 3 5 15 60 240 D W
+    return `kline.${interval}.${symbol}`;
+}
+
 function bybitGenerateSubscribeTopicJson(streamName, id) {
     let subscribeTopic = {
         req_id: id,
@@ -485,21 +468,40 @@ const Bybit = {
     parseBybitKlineResponse,
     parseBybitWSKlineData,
 
+    bybitCraftKlineStreamName,
     bybitGenerateSubscribeTopicJson,
     bybitGenerateUnsubscribeTopicJson,
 };
+const newsUtils = {
+    // get_formatted_date, // only used in parse_news
+    // parse_news, // only used in initTreeWS // not needed to export
+    initTreeWS,
+    generateMockNewsFeed,
+};
 
-/* 2 solution
-1.
-const customMapping = {}
-['1m', '3m', '15'm].forEach((interval, index) => customMapping[interval] = binance[index] ) 
+const commonUtils = {
+    generateRandomNumber,
+    round_step_size,
+    getPrecisionForToFixed,
+};
 
-2. Object.fromEntries([ ['1m', '1'], ['3m', 3], ['15m', 15] ]) => {'1m': '1'} 
+const Binance = {
+    get_symbols_filter_info,
+    craft_binance_kline_end_point,
+    craft_binance_oi_hist_endpoint,
 
-*/
+    parseBinanceKlineResponse,
+    parseBinanceWSKlineData,
+    mapDataForVolumeHistogram,
 
+    initBinancePriceStream,
+    craftKlineStreamName,
+    generateSubscribeTopicJson,
+    generateUnsubscribeTopicJson,
+};
+
+// ChartContainer utils
 const UI_Intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w'];
-
 const exchangeIntervalMapping = {
     '1m': { binance: '1m', bybit: '1' },
     '3m': { binance: '3m', bybit: '3' },
@@ -510,9 +512,41 @@ const exchangeIntervalMapping = {
     '1w': { binance: '1w', bybit: 'W' },
 };
 
-const IntervalUtils = {
-    UI_Intervals,
-    exchangeIntervalMapping,
+// what r de pros n cons
+// exchangeFuncMapping['craftKlineEndPoint']['binance']
+// or funcMapping['binance']['craftKlineEndPoint']
+
+const exchangeFuncMapping = {
+    craftKlineEndPoint: {
+        binance: Binance.craft_binance_kline_end_point,
+        bybit: Bybit.craft_bybit_kline_end_point,
+    },
+    parseKlineResponse: {
+        binance: Binance.parseBinanceKlineResponse,
+        bybit: Bybit.parseBybitKlineResponse,
+    },
+    parseWSKlineData: {
+        binance: Binance.parseBinanceWSKlineData,
+        bybit: Bybit.parseBybitWSKlineData,
+    },
+    craftKlineStreamName: {
+        binance: Binance.craftKlineStreamName,
+        bybit: Bybit.bybitCraftKlineStreamName,
+    },
+    craftSubTopicJSON: {
+        binance: Binance.generateSubscribeTopicJson,
+        bybit: Bybit.bybitGenerateSubscribeTopicJson,
+    },
+    craftUnsubTopicJSON: {
+        binance: Binance.generateUnsubscribeTopicJson,
+        bybit: Bybit.bybitGenerateUnsubscribeTopicJson,
+    },
 };
 
-export { GLOBAL_API, newsUtils, commonUtils, Binance, Bybit, IntervalUtils };
+const ChartContainerUtils = {
+    UI_Intervals,
+    exchangeIntervalMapping,
+    exchangeFuncMapping,
+};
+
+export { GLOBAL_API, newsUtils, commonUtils, Binance, Bybit, ChartContainerUtils };
