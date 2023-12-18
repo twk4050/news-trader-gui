@@ -5,7 +5,7 @@ import { Autocomplete, Box, Checkbox, FormControlLabel, Stack, TextField } from 
 import moment from 'moment';
 
 import { IntervalButton, SelectedIntervalButton } from './styles/StyledComponent123';
-import { Binance, Bybit, commonUtils } from './utils';
+import { Binance, Bybit, commonUtils, IntervalUtils } from './utils';
 
 import { BinanceContext, BinanceWSContext, BybitContext, BybitWSContext } from './providers';
 
@@ -417,13 +417,13 @@ export default function ChartContainer({
 
     const chartContainerRef = useRef(null);
 
-    // FIXME: quick fix
-    if (exchange == 'bybit') {
-        interval = bybitKlineIntervals[interval];
-    }
+    const UI_Intervals = IntervalUtils.UI_Intervals;
+    const exchangeIntervalMapping = IntervalUtils.exchangeIntervalMapping; // FIXME: store exchange mapping here or utils.js
+    const exchangeInterval123 = exchangeIntervalMapping[interval][exchange]; // TODO: below if else clause can follow this
 
     const [currentSymbol, setCurrentSymbol] = useState(symbol);
-    const [currentInterval, setCurrentInterval] = useState(interval);
+    const [currentUIInterval, setCurrentUIInterval] = useState(interval);
+    const [exchangeInterval, setExchangeInterval] = useState(exchangeInterval123);
     const [klineData, setKlineData] = useState([]);
 
     // vars for ChartContainer calling kline data api
@@ -435,12 +435,12 @@ export default function ChartContainer({
     const randomNumber = commonUtils.generateRandomNumber();
 
     if (exchange == 'binance') {
-        klineEndPoint = Binance.craft_binance_kline_end_point(currentSymbol, currentInterval);
+        klineEndPoint = Binance.craft_binance_kline_end_point(currentSymbol, exchangeInterval);
         parseKlineData = Binance.parseBinanceKlineResponse;
 
         tickSize = binanceSymbolsInfo[currentSymbol]['tickSize'];
         wsContext = binanceWSContext;
-        wsStreamName = `${currentSymbol.toLowerCase()}@kline_${currentInterval}`;
+        wsStreamName = `${currentSymbol.toLowerCase()}@kline_${exchangeInterval}`;
         subscribeTopicJSON = Binance.generateSubscribeTopicJson(wsStreamName, randomNumber);
         unsubscribeTopicJSON = Binance.generateUnsubscribeTopicJson(wsStreamName, randomNumber);
         mapWSKlineData = Binance.parseBinanceWSKlineData;
@@ -449,12 +449,12 @@ export default function ChartContainer({
     if (exchange == 'bybit') {
         // https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&limit=500
         // FIXME: currently using hardcoded values 1h == 60 interval
-        klineEndPoint = Bybit.craft_bybit_kline_end_point(currentSymbol, currentInterval);
+        klineEndPoint = Bybit.craft_bybit_kline_end_point(currentSymbol, exchangeInterval);
         parseKlineData = Bybit.parseBybitKlineResponse;
 
         tickSize = bybitSymbolsInfo[currentSymbol]['tickSize'];
         wsContext = bybitWSContext;
-        wsStreamName = `kline.${interval}.${symbol}`; // FIXME:
+        wsStreamName = `kline.${exchangeInterval}.${symbol}`; // FIXME:
         subscribeTopicJSON = Bybit.bybitGenerateSubscribeTopicJson(wsStreamName, randomNumber);
         unsubscribeTopicJSON = Bybit.bybitGenerateUnsubscribeTopicJson(wsStreamName, randomNumber);
         mapWSKlineData = Bybit.parseBybitWSKlineData;
@@ -462,15 +462,16 @@ export default function ChartContainer({
 
     function handleOnChangeSymbol(event, newSymbol) {
         setKlineData([]);
-
-        setCurrentSymbol(newSymbol); // FIXME:
+        setCurrentSymbol(newSymbol);
     }
-    function handleOnClickInterval(event, interval) {
+
+    function handleOnClickUIInterval(event, interval) {
         function changeInterval(interval) {
-            if (interval !== currentInterval) {
+            if (interval !== currentUIInterval) {
                 setKlineData([]);
             }
-            setCurrentInterval(interval);
+            setCurrentUIInterval(interval);
+            setExchangeInterval(exchangeIntervalMapping[interval][exchange]);
         }
         return changeInterval(interval);
     }
@@ -501,7 +502,7 @@ export default function ChartContainer({
             setKlineData([]);
             elem.removeEventListener('dblclick', onDblClickListener);
         };
-    }, [currentSymbol, currentInterval]);
+    }, [currentSymbol, currentUIInterval]);
 
     return (
         <Box
@@ -542,17 +543,20 @@ export default function ChartContainer({
                     }}
                 ></Autocomplete>
 
-                {binanceKlineIntervals.map((interval, i) =>
-                    interval == currentInterval ? (
+                {UI_Intervals.map((ui_interval, i) =>
+                    ui_interval == currentUIInterval ? (
                         <SelectedIntervalButton
                             key={i}
-                            onClick={(e) => handleOnClickInterval(e, interval)}
+                            onClick={(e) => handleOnClickUIInterval(e, ui_interval)}
                         >
-                            {interval}
+                            {ui_interval}
                         </SelectedIntervalButton>
                     ) : (
-                        <IntervalButton key={i} onClick={(e) => handleOnClickInterval(e, interval)}>
-                            {interval}
+                        <IntervalButton
+                            key={i}
+                            onClick={(e) => handleOnClickUIInterval(e, ui_interval)}
+                        >
+                            {ui_interval}
                         </IntervalButton>
                     )
                 )}
@@ -569,7 +573,7 @@ export default function ChartContainer({
             {klineData.length != 0 && (
                 <Chart
                     symbol={currentSymbol}
-                    interval={currentInterval}
+                    interval={currentUIInterval}
                     klineData={klineData}
                     tickSize={tickSize}
                     wsContext={wsContext}

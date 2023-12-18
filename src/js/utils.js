@@ -489,4 +489,30 @@ const Bybit = {
     bybitGenerateUnsubscribeTopicJson,
 };
 
-export { GLOBAL_API, newsUtils, commonUtils, Binance, Bybit };
+/* 2 solution
+1.
+const customMapping = {}
+['1m', '3m', '15'm].forEach((interval, index) => customMapping[interval] = binance[index] ) 
+
+2. Object.fromEntries([ ['1m', '1'], ['3m', 3], ['15m', 15] ]) => {'1m': '1'} 
+
+*/
+
+const UI_Intervals = ['1m', '3m', '15m', '1h', '4h', '1d', '1w'];
+
+const exchangeIntervalMapping = {
+    '1m': { binance: '1m', bybit: '1' },
+    '3m': { binance: '3m', bybit: '3' },
+    '15m': { binance: '15m', bybit: '15' },
+    '1h': { binance: '1h', bybit: '60' },
+    '4h': { binance: '4h', bybit: '240' },
+    '1d': { binance: '1d', bybit: 'D' },
+    '1w': { binance: '1w', bybit: 'W' },
+};
+
+const IntervalUtils = {
+    UI_Intervals,
+    exchangeIntervalMapping,
+};
+
+export { GLOBAL_API, newsUtils, commonUtils, Binance, Bybit, IntervalUtils };
