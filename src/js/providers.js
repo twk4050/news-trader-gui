@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext, createContext } from 'react';
-import { Binance, Bybit } from './utils';
+import { Binance, Bybit, commonUtils } from './utils';
 
 export const BinanceWSContext = createContext();
 
@@ -235,11 +235,20 @@ export const BybitWebSocketProvider = ({ children }) => {
             }
         };
 
+        let pingIntervalId = setInterval(() => {
+            let pingMessage = {
+                req_id: commonUtils.generateRandomNumber(),
+                op: 'ping',
+            };
+            ws.send(JSON.stringify(pingMessage));
+        }, 20000);
+
         wsRef.current = ws;
         return () => {
+            clearInterval(pingIntervalId);
             ws.close();
         };
-    }, []);
+    }, []); // FIXME: how to retrigger if websocket disconnects ? useState(isDisconnected) ?
 
     const ret = [isOpen, wsRef.current?.send.bind(wsRef.current), subscribe, unsubscribe];
 
