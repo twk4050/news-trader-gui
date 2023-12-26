@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('API123', {
         // v6.2 code refactor. created BinanceContext / BinanceProvider to provide symbols , symbolsFilterInfo
         // v7.0 integrated bybit chart. working on bybit orders next
         // v7.1 bybit heartbeat message, to keep ws connection alive
-        version: 'v7.1',
+        // v7.2 add markers to kline if kline bounce ma20
+        version: 'v7.2',
     },
 });

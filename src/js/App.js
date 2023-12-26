@@ -43,17 +43,17 @@ export default function App() {
         },
         {
             exchange: 'binance',
-            coin: 'ETHUSDT',
+            coin: 'SOLUSDT',
             interval: '1d',
         },
         {
             exchange: 'binance',
-            coin: 'SOLUSDT',
-            interval: '1h',
+            coin: 'MATICUSDT',
+            interval: '1d',
         },
         {
             exchange: 'binance',
-            coin: 'INJUSDT',
+            coin: 'AVAXUSDT',
             interval: '1h',
         },
     ];

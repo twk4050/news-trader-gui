@@ -14,6 +14,8 @@ import { BinanceContext, BinanceWSContext, BybitContext, BybitWSContext } from '
 // https://tradingview.github.io/lightweight-charts/docs/api/interfaces/LineStyleOptions
 // draw sma sma10 purple 20 orange 50 blue
 
+// TODO: try series.subscribeDataChange instead of updating in ws
+
 const MA10_Options = {
     lookback: 10,
     color: '#e040fb',
@@ -38,8 +40,6 @@ const MA50_Options = {
     color: '#2860f8',
 };
 
-const MA_Options = [MA10_Options, MA20_Options, MA50_Options];
-
 // Chart Component = display klineData and connect to exchange websocket kline stream for real time updates
 function Chart({
     symbol,
@@ -62,10 +62,6 @@ function Chart({
     const [lineSeriesDrawerMA10, setLineSeriesDrawerMA10] = useState(null); // FIXME: lineSeriesDrawer why use useState
     const [lineSeriesDrawerMA20, setLineSeriesDrawerMA20] = useState(null);
     const [lineSeriesDrawerMA50, setLineSeriesDrawerMA50] = useState(null);
-
-    const MA10_LOOKBACK = 10;
-    const MA20_LOOKBACK = 20;
-    const MA50_LOOKBACK = 50;
 
     const chartRef = useRef();
     const ohlcLegendRef = useRef();
@@ -192,22 +188,60 @@ function Chart({
         setVolSeriesDrawer(volumeSeries);
 
         // moving average lineSeries
-        MA_Options.forEach((ma_option) => {
-            const lookback = ma_option.lookback;
+        const MA10_Data = calculateSMAFromKline(klineData, MA10_Options.lookback);
+        const MA20_Data = calculateSMAFromKline(klineData, MA20_Options.lookback);
+        const MA50_Data = calculateSMAFromKline(klineData, MA50_Options.lookback);
 
-            const maSeries = chart.addLineSeries(ma_option);
-            const maData = calculateSMAFromKline(klineData, lookback);
+        const MA10_Series = chart.addLineSeries(MA10_Options);
+        const MA20_Series = chart.addLineSeries(MA20_Options);
+        const MA50_Series = chart.addLineSeries(MA50_Options);
+        MA10_Series.setData(MA10_Data);
+        MA20_Series.setData(MA20_Data);
+        MA50_Series.setData(MA50_Data);
 
-            maSeries.setData(maData); // setData( [ {value: 0, time: epoch }, {...} ])
+        setLineSeriesDrawerMA10(MA10_Series);
+        setLineSeriesDrawerMA20(MA20_Series);
+        setLineSeriesDrawerMA50(MA50_Series);
 
-            if (lookback == 10) {
-                setLineSeriesDrawerMA10(maSeries);
-            } else if (lookback == 20) {
-                setLineSeriesDrawerMA20(maSeries);
-            } else if (lookback == 50) {
-                setLineSeriesDrawerMA50(maSeries);
+        /* 
+            set markers for candles that bounce off ma20
+            // ma10 > ma20
+            // 1. price open higher than ma, 2. price dip below 3. price close above ma
+            bounce: ma20 < k.open and  k.low < ma20 and ma20 < k.close        
+        */
+        const dateForMarkers = [];
+        const markers = [];
+
+        for (let i = 0; i < klineSeries.data().length; i++) {
+            const kline = klineSeries.data()[i];
+            const ma10 = MA10_Series.dataByIndex(i);
+            const ma20 = MA20_Series.dataByIndex(i); // .dataByIndex(0) => null, .dataByIndex(21) => {value: ..., time: ...}
+
+            if (!ma20) {
+                continue;
             }
-        });
+
+            // ma10 value must be higher than ma20
+            if (ma10.value < ma20.value) {
+                continue;
+            }
+
+            let ma20Value = ma20.value;
+            if (bounceOffMA(kline, ma20Value)) {
+                dateForMarkers.push(kline.time);
+            }
+        }
+        for (let date of dateForMarkers) {
+            markers.push({
+                time: date,
+                position: 'belowBar', // "aboveBar" | "belowBar" | "inBar"
+                color: '#f68410',
+                shape: 'arrowUp', // "circle" | "square" | "arrowUp" | "arrowDown"
+                text: 'B',
+            });
+        }
+
+        klineSeries.setMarkers(markers);
 
         // symbolName https://tradingview.github.io/lightweight-charts/tutorials/how_to/legends#:~:text=In%20order%20to%20add%20a,within%20our%20html%20legend%20element.
         const legend = document.createElement('div');
@@ -390,9 +424,9 @@ function Chart({
 
             // moving average
             const currentKlineData = klineSeriesDrawer.data();
-            let latestMA10 = calculateLatestSMA(currentKlineData, MA10_LOOKBACK);
-            let latestMA20 = calculateLatestSMA(currentKlineData, MA20_LOOKBACK);
-            let latestMA50 = calculateLatestSMA(currentKlineData, MA50_LOOKBACK);
+            let latestMA10 = calculateLatestSMA(currentKlineData, MA10_Options.lookback);
+            let latestMA20 = calculateLatestSMA(currentKlineData, MA20_Options.lookback);
+            let latestMA50 = calculateLatestSMA(currentKlineData, MA50_Options.lookback);
 
             lineSeriesDrawerMA10.update(latestMA10);
             lineSeriesDrawerMA20.update(latestMA20);
@@ -590,30 +624,12 @@ export default function ChartContainer({
 }
 
 // FIXME: hacks
+function bounceOffMA(kline, maValue) {
+    let open = kline.open;
+    let low = kline.low;
+    let close = kline.close;
 
-function mapOIHistData(oiHist) {
-    // for /futures/data/openInterestHist
-    //     {
-    //         "symbol":"BTCUSDT",
-    //          "sumOpenInterest":"20403.63700000",  // total open interest
-    //          "sumOpenInterestValue": "150570784.07809979",   // total open interest value
-    //          "timestamp":"1583127900000"
-    //    }
-    //  map above to {time, value}
-
-    return {
-        time: parseFloat(oiHist['timestamp']) / 1000,
-        value: parseFloat(oiHist['sumOpenInterest']),
-    };
-}
-
-function mapOIData(oi, interval) {
-    // for /fapi/v1/openInterest
-    // oi data {openInterest, symbol, time} convert to -> {time, value}
-    return {
-        time: roundToNearestInterval(oi['time'], interval) / 1000,
-        value: parseFloat(oi['openInterest']),
-    };
+    return maValue < open && low < maValue && maValue < close;
 }
 
 function formatOHLCLegend(kline) {
@@ -631,20 +647,6 @@ function formatVolLegend(volBar) {
     });
 
     let legend = `vol: ${volumeNumberFormatter.format(volBar.value)}`;
-    return legend;
-}
-
-// FIXME: similar fn to formatVolLegend
-function formatOILegend(oiBar) {
-    if (!oiBar) {
-        return 'oi: NaN';
-    }
-    const oiNumberFormatter = Intl.NumberFormat('en', {
-        notation: 'compact',
-        maximumFractionDigits: 2,
-    });
-
-    let legend = `oi: ${oiNumberFormatter.format(oiBar.value)}`;
     return legend;
 }
 
@@ -700,27 +702,6 @@ function calculateLatestSMA(data, count) {
     };
 
     return result;
-}
-
-// similar fn to fKlineCountdown
-function roundToNearestInterval(epoch_ms, interval) {
-    // round down epoch_ms to nearest interval
-    const interval_to_ms = {
-        '1m': 60 * 1000,
-        '3m': 3 * 60 * 1000,
-        '5m': 5 * 60 * 1000,
-        '15m': 15 * 60 * 1000,
-        '1h': 60 * 60 * 1000,
-        '4h': 4 * 60 * 60 * 1000,
-        '1d': 24 * 60 * 60 * 1000,
-        '1w': 7 * 24 * 60 * 60 * 1000,
-    };
-
-    const interval_ms = interval_to_ms[interval];
-    let ms_passed = epoch_ms % interval_ms;
-
-    let nearestInterval_ms = epoch_ms - ms_passed;
-    return nearestInterval_ms;
 }
 
 // https://stackoverflow.com/questions/31337370/how-to-convert-seconds-to-hhmmss-in-moment-js
