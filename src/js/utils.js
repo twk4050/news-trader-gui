@@ -26,7 +26,7 @@ function parse_news(news) {
     if ('source' in news) {
         // .source == 'Blogs' / 'Terminal' / 'Binance', for blogs, get body with .en?
         source = news.source;
-        if (source === 'Upbit') {
+        if (source === 'Upbit' || source === 'Bithumb') {
             title = news.en;
         }
 
