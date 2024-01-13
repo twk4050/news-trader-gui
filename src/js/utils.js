@@ -184,7 +184,11 @@ function get_symbols_filter_info(cb) {
                     stepSize: s.filters[1].stepSize,
                 };
 
-                if (s.status !== 'TRADING' || s.contractType !== 'PERPETUAL') {
+                if (
+                    s.status !== 'TRADING' ||
+                    s.contractType !== 'PERPETUAL' ||
+                    s.quoteAsset !== 'USDT'
+                ) {
                     return;
                 } else {
                     filteredSymbolsInfo[symbolName] = symbolObj;

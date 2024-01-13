@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('API123', {
         // v7.0 integrated bybit chart. working on bybit orders next
         // v7.1 bybit heartbeat message, to keep ws connection alive
         // v7.2 add markers to kline if kline bounce ma20
-        version: 'v7.2',
+        // v7.3 binance added usdc perp, remove usdc perp from list
+        version: 'v7.3',
     },
 });
