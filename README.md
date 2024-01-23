@@ -2,6 +2,8 @@
 # Desktop GUI for Binance Crypto Futures Trading
 - developed with Electronjs, React, Material UI and Lightweight Chart
 
+![app](./assets/app-screenshot.PNG)
+
 # how to run 
 1. git clone project repo
 2. project repo should have package.json, run `$ npm install`
