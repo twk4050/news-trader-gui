@@ -1,7 +1,7 @@
 module.exports = {
     packagerConfig: {
         asar: true,
-        extraResource: './assets',
+        extraResource: ['./assets', '.env'],
     },
     rebuildConfig: {},
     makers: [

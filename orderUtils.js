@@ -2,6 +2,27 @@ const qs = require('node:querystring');
 const crypto = require('node:crypto');
 const Big = require('big.js');
 
+let offset = 0;
+
+// { "serverTime": 1499827319559 }, FIXME: think about time offset logic
+get_binance_server_time_n_set_offset();
+
+function get_binance_server_time_n_set_offset() {
+    const endpoint = 'https://fapi.binance.com' + '/fapi/v1/time';
+
+    const fetch_options = {
+        method: 'GET',
+    };
+
+    fetch(endpoint, fetch_options)
+        .then((res) => res.json())
+        .then((data) => {
+            offset = data['serverTime'] - get_epoch_ms(); // serverTime ---> local machine time, rtt/2, -559
+            console.log('get servertime then get time now, server-now:', offset);
+            return data;
+        });
+}
+
 function get_epoch_ms() {
     return Date.now(); // js returns ms unlike python s or nanos
 }
@@ -17,7 +38,7 @@ function craft_binance_perp_order_url(params, SECRET) {
     // delete signature if any
     delete params.signature;
 
-    params.timestamp = get_epoch_ms();
+    params.timestamp = get_epoch_ms() + offset; // FIXME: refactor code
 
     let str_to_be_signed = qs.stringify(params);
     params.signature = get_signature(str_to_be_signed, SECRET);

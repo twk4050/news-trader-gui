@@ -117,7 +117,7 @@ export default function NewsContainer({ sxProps }) {
 
     // NewsContainer re-render factors: 1. new incoming news `newsFeed` 2. sound change
     if (!disableSound) {
-        console.log('playing sound');
+        // console.log('playing sound');
         GLOBAL_API.notify.playSound();
     }
 
@@ -137,7 +137,7 @@ export default function NewsContainer({ sxProps }) {
     }, []);
 
     return (
-        <Stack spacing={1} sx={{ maxHeight: '550px', overflow: 'auto', ...sxProps }}>
+        <Stack spacing={1} sx={{ overflow: 'auto', ...sxProps }}>
             <Stack direction={'row'} spacing={1}>
                 <Typography
                     sx={{ width: '100px', maxHeight: '20px', fontSize: '14px', color: 'gray' }}
@@ -147,12 +147,9 @@ export default function NewsContainer({ sxProps }) {
 
                 <FormControlLabel
                     control={<Checkbox onChange={(e) => setDisableSound(!disableSound)} />}
-                    label="disable sound?"
+                    label={`disable sound? ${GLOBAL_API.appData.version}`}
                     sx={{ maxWidth: '200px', maxHeight: '20px' }}
                 />
-                <Button onClick={test123} sx={{ maxWidth: '20px', maxHeight: '20px' }}>
-                    test123
-                </Button>
             </Stack>
 
             {newsFeed.map((news, i) => (

@@ -1,17 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Autocomplete, TextField, Typography, Stack, InputAdornment, Button } from '@mui/material';
 
 import { BuyButton, SellButton } from './styles/StyledComponent123';
 
-import { BinanceUtils, GLOBAL_API } from './utils';
+import { Binance, GLOBAL_API, commonUtils } from './utils';
+import { BinanceContext, BinanceWSContext } from './providers';
 
 function OrderComponent({ symbol, price, filterInfo }) {
     // price: <number>
     const initialSpread = 0.2;
-    const order_nvs = [100, 2200, 6700]; // order notional value, use to map BuyButton n SellButtons
+    const order_nvs = [1500, 6000, 17000]; // order notional value, use to map BuyButton n SellButtons
 
     const symbol_tick_size = filterInfo.tickSize;
-    const precision = BinanceUtils.getPrecisionForToFixed(symbol_tick_size); //filterInfo.pricePrecision;
+    const precision = commonUtils.getPrecisionForToFixed(symbol_tick_size); //filterInfo.pricePrecision;
 
     const [spread, setSpread] = useState(initialSpread); // typeof spread => Number, always a float
     const [bidPrice, askPrice] = calculateBidAskPrice(price, spread);
@@ -29,8 +30,8 @@ function OrderComponent({ symbol, price, filterInfo }) {
         let rawBidPrice = price * (1 - spread / 100);
         let rawAskPrice = price * (1 + spread / 100);
 
-        let newBidPrice = BinanceUtils.round_step_size(rawBidPrice, symbol_tick_size);
-        let newAskPrice = BinanceUtils.round_step_size(rawAskPrice, symbol_tick_size);
+        let newBidPrice = commonUtils.round_step_size(rawBidPrice, symbol_tick_size);
+        let newAskPrice = commonUtils.round_step_size(rawAskPrice, symbol_tick_size);
 
         return [newBidPrice, newAskPrice];
     }
@@ -39,7 +40,7 @@ function OrderComponent({ symbol, price, filterInfo }) {
         const symbol_step_size = filterInfo.stepSize;
         function order(symbol, side, nv) {
             let order_price = side === 'BUY' ? bidPrice : askPrice;
-            let order_quantity = BinanceUtils.round_step_size(nv / order_price, symbol_step_size);
+            let order_quantity = commonUtils.round_step_size(nv / order_price, symbol_step_size);
 
             const params = {
                 symbol: symbol,
@@ -48,7 +49,13 @@ function OrderComponent({ symbol, price, filterInfo }) {
                 price: order_price,
             };
 
-            console.log(side, symbol, nv, `quantity: ${order_quantity} @ ${order_price}`);
+            console.log(
+                'Browser: from OrderContainer.js ',
+                side,
+                symbol,
+                nv,
+                `quantity: ${order_quantity} @ ${order_price}`
+            );
             GLOBAL_API.binance.sendOrder(params);
         }
 
@@ -58,9 +65,11 @@ function OrderComponent({ symbol, price, filterInfo }) {
     return (
         <Stack spacing={2}>
             <Stack direction={'row'} spacing={2}>
-                <Typography>
-                    {symbol} Price: {price.toFixed(precision)}
-                </Typography>
+                <Stack direction={'column'}>
+                    <Typography>{symbol}</Typography>
+                    <Typography>Price: {price.toFixed(precision)}</Typography>
+                </Stack>
+
                 <TextField
                     size="small"
                     variant="outlined"
@@ -73,15 +82,14 @@ function OrderComponent({ symbol, price, filterInfo }) {
                         },
                     }}
                     sx={{
-                        maxWidth: '90px',
-                        minWidth: '90px',
-
-                        height: '30px',
-                        minHeight: '30px',
-                        maxHeight: '30px',
+                        maxWidth: '120px',
+                        minWidth: '120px',
+                        height: '48px',
+                        minHeight: '48px',
+                        maxHeight: '48px',
                     }}
                     inputProps={{
-                        step: '.1',
+                        step: '.05',
                     }}
                     type="number"
                     value={spread}
@@ -112,69 +120,70 @@ function OrderComponent({ symbol, price, filterInfo }) {
     );
 }
 
-export default function OrderContainer({ symbol, symbolsFilterInfo }) {
-    // const symbols = ['BTCUSDT', 'ETHUSDT', 'TRBUSDT', '1000FLOKIUSDT', 'TUSDT'];
-    // const symbols = Object.keys(symbolsFilterInfo);
-    // const [currentSymbol, setCurrentSymbol] = useState(symbols[0]);
-    // const filterInfo = symbolsFilterInfo[currentSymbol];
-    // function handleOnChangeSymbol(e, symbol) {
-    //     setCurrentSymbol(symbol);
-    // }
+export default function OrderContainer({ symbol, sxProps }) {
+    const [, symbolsFilterInfo] = useContext(BinanceContext);
+    const [isOpen, wsSendMsg, subscribeToStreamName, unsubscribe] = useContext(BinanceWSContext);
+
+    const [exchangeCoinPrice, setExchangeCoinPrice] = useState({});
 
     const filterInfo = symbolsFilterInfo[symbol];
-    const currentSymbol = symbol;
 
-    const [allCoinPrice, setAllCoinPrice] = useState({});
-    function handleAllCoinPrice(newAllCoinPriceData) {
+    function handleExchangeCoinPrice(newExchangePrice) {
         // console.log(newAllCoinPriceData);
-        setAllCoinPrice((oldAllCoinPrice) => ({
-            ...oldAllCoinPrice,
-            ...newAllCoinPriceData,
+        setExchangeCoinPrice((oldExchangePrice) => ({
+            ...oldExchangePrice,
+            ...newExchangePrice,
         }));
     }
 
-    // init websocket
+    // reference ChartContainer.js on handling ws connection
     useEffect(() => {
-        BinanceUtils.initBinancePriceStream(handleAllCoinPrice);
-    }, []);
+        if (!isOpen) {
+            return;
+        }
+
+        const streamName = `!miniTicker@arr`;
+        const randomNumber = commonUtils.generateRandomNumber();
+        console.log(`sending ${streamName} to binance ws to subscribe`);
+
+        let subTopic = Binance.generateSubscribeTopicJson(streamName, randomNumber);
+        wsSendMsg(subTopic);
+
+        // FIXME: should cb know how to parse ws json data or just pass 'handleAllCoinPrice' fn only
+        const cb = (data) => {
+            const newPriceData = {};
+            for (let symbolData of data) {
+                let symbol = symbolData.s;
+                let lastPrice = symbolData.c;
+                newPriceData[symbol] = lastPrice;
+            }
+
+            handleExchangeCoinPrice(newPriceData);
+        };
+
+        subscribeToStreamName(streamName, cb);
+
+        return () => {
+            console.log(`sending ${streamName} to binance ws to unsubscribe`);
+            let unsubTopic = Binance.generateUnsubscribeTopicJson(streamName, randomNumber);
+            wsSendMsg(unsubTopic);
+            unsubscribe(streamName, cb);
+        };
+    }, [isOpen]);
 
     return (
         <Stack
             spacing={0}
             sx={{
-                minWidth: '350px',
-                maxWidth: '350px',
-                minHeight: '150px',
-                maxHeight: '150px',
-                padding: '12px',
-
                 backgroundColor: '#132e3b',
+                ...sxProps,
             }}
         >
-            {allCoinPrice[currentSymbol] ? (
+            {exchangeCoinPrice[symbol] ? (
                 <>
-                    {/* <Autocomplete
-                        options={symbols}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                size="small"
-                                variant="standard"
-                                InputProps={{
-                                    ...params.InputProps,
-                                    style: { fontSize: '14px', fontFamily: 'Helvetica' },
-                                }}
-                            />
-                        )}
-                        value={currentSymbol}
-                        onChange={handleOnChangeSymbol}
-                        autoHighlight
-                        disableClearable
-                    ></Autocomplete> */}
-
                     <OrderComponent
-                        symbol={currentSymbol}
-                        price={+allCoinPrice[currentSymbol]}
+                        symbol={symbol}
+                        price={+exchangeCoinPrice[symbol]}
                         filterInfo={filterInfo}
                     />
                 </>
